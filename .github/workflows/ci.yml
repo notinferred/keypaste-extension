@@ -1,0 +1,63 @@
+name: ci
+
+# The pairing test against a real keypaste stays in the product's app.yml.
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['**.md', 'LICENSE']
+  pull_request:
+    paths-ignore: ['**.md', 'LICENSE']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  extension:
+    name: lint, test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # The zips' bytes depend on Node's zlib, so Node is pinned exactly, as the product's app.yml pins it.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+          cache: npm
+
+      - name: Install the locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      # The browsers' system packages are kept too: the runner's apt mirror has taken eighteen minutes to serve them.
+      - name: Keep apt's downloads where the cache reads them
+        run: |
+          mkdir -p ~/apt-archives/partial
+          echo "Dir::Cache::Archives \"$HOME/apt-archives/\";" | sudo tee /etc/apt/apt.conf.d/90-cached-archives
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/apt-archives/*.deb
+          key: playwright-apt-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Upstream's config retries in CI; a retry would hide an intermittent failure, so none runs.
+      - name: Run the tests
+        run: |
+          npx playwright install --with-deps chromium firefox
+          npx playwright test --retries=0
+
+      - name: Build
+        run: |
+          node build.js
+          sha256sum ../artifacts/extension/*.zip
