@@ -1,7 +1,4 @@
 .kpxcAutocomplete-container {
-    /* The browser exposes no reliable system accent to a page, so a fixed accent keeps white text at 5.5:1 in light and dark. */
-    --kp-list-accent: #0A64D6;
-    --kp-list-on-accent: #FFFFFF;
     background-color: var(--kp-card);
     border: 1px solid var(--kp-line);
     border-radius: 10px;
@@ -9,10 +6,11 @@
     box-sizing: border-box;
     color: var(--kp-text);
     display: none;
-    font: 400 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 400 13px/1.4 var(--kp-sans);
     font-style: normal;
     inset: auto;
     letter-spacing: normal;
+    max-width: calc(100vw - 16px);
     min-width: 16em;
     opacity: 1;
     overflow: hidden;
@@ -42,6 +40,7 @@
 }
 
 .kpxcAutocomplete-site__name .kpxc-icon,
+.kpxcAutocomplete-warning .kpxc-icon,
 .kpxcAutocomplete-action .kpxc-icon {
     fill: none;
     flex: none;
@@ -49,8 +48,24 @@
     stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
-    stroke-width: 2;
+    stroke-width: 1.5;
     width: 14px;
+}
+
+.kpxcAutocomplete-action .kpxc-icon {
+    color: var(--kp-text-muted);
+}
+
+.kpxcAutocomplete-warning {
+    align-items: flex-start;
+    display: flex;
+    gap: 8px;
+    padding: 6px 8px;
+}
+
+.kpxcAutocomplete-warning .kpxc-icon {
+    color: var(--kp-warn);
+    margin-top: 2px;
 }
 
 .kpxcAutocomplete-items {
@@ -64,14 +79,14 @@
     cursor: default;
     display: flex;
     gap: 10px;
-    padding: 5px 8px;
+    height: 44px;
+    padding: 0 8px;
 }
 
 .kpxcAutocomplete-item__monogram {
     align-items: center;
-    background-color: var(--kp-text-muted);
     border-radius: 6px;
-    color: var(--kp-card);
+    color: #FFFFFF;
     display: flex;
     flex: none;
     font-size: 12px;
@@ -113,13 +128,13 @@
 }
 
 .kpxcAutocomplete-item--active {
-    background-color: var(--kp-list-accent);
-    color: var(--kp-list-on-accent);
+    background-color: var(--kp-accent);
+    color: var(--kp-on-accent);
 }
 
 .kpxcAutocomplete-item--active .kpxcAutocomplete-item__value,
 .kpxcAutocomplete-item--active .kpxcAutocomplete-item__vault {
-    color: var(--kp-list-on-accent);
+    color: var(--kp-on-accent);
 }
 
 .kpxcAutocomplete-action {
@@ -129,15 +144,16 @@
     cursor: default;
     display: flex;
     gap: 10px;
-    padding: 6px 8px;
+    min-height: 32px;
+    padding: 2px 8px;
 }
 
 .kpxcAutocomplete-action[role="button"]:hover {
     background-color: var(--kp-hover);
 }
 
-.kpxcAutocomplete-action--locked {
-    color: var(--kp-text-secondary);
+.kpxcAutocomplete-action--status {
+    min-height: 40px;
 }
 
 .kpxcAutocomplete-action__label {
@@ -150,24 +166,23 @@
 
 .kpxcAutocomplete-button {
     background-color: var(--kp-card);
-    border: 1px solid var(--kp-line-strong);
-    border-radius: 6px;
+    border: 0;
+    border-radius: 7px;
+    box-shadow: inset 0 0 0 1px var(--kp-line);
     color: var(--kp-text);
     flex: none;
-    font: inherit;
-    font-size: 12px;
-    padding: 2px 10px;
+    font: 500 13px/1 var(--kp-sans);
+    height: 28px;
+    padding: 0 12px;
 }
 
-.kpxcAutocomplete-button--primary {
-    background-color: var(--kp-list-accent);
-    border-color: var(--kp-list-accent);
-    color: var(--kp-list-on-accent);
+.kpxcAutocomplete-button:hover {
+    background-color: var(--kp-hover);
 }
 
 .kpxcAutocomplete-button:focus-visible {
-    outline: 2px solid var(--kp-list-accent);
-    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--kp-card), 0 0 0 4px var(--kp-ring);
+    outline: none;
 }
 
 .kpxcAutocomplete-footer:not(:empty) {
@@ -185,11 +200,6 @@
     color: var(--kp-text-muted);
     padding: 8px;
     text-align: center;
-}
-
-.kpxcAutocomplete-note--warning {
-    color: var(--kp-danger);
-    text-align: start;
 }
 
 .kpxcAutocomplete-announcer {

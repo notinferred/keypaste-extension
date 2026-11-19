@@ -1,5 +1,13 @@
 'use strict';
 
+// What the list says when it has no logins to show, with the way forward.
+const STATE_ROWS = {
+    unpaired: { kind: 'status', icon: 'info', text: tr('loginListNotPaired'), button: tr('loginListPair'), act: 'pair' },
+    disconnected: { kind: 'status', icon: 'triangle-alert', text: tr('errorNotConnected'), button: tr('popupReloadButton'), act: 'retry' },
+    refused: { kind: 'status', icon: 'triangle-alert', text: tr('loginListRefused'), button: tr('popupReloadButton'), act: 'retry' },
+    frame: { kind: 'status', icon: 'info', text: tr('credentialsBlockedInIframe') },
+};
+
 /**
  * The list a click on keypaste's key icon opens: the site, the names of its logins in every open vault and the vaults that are
  * locked, then New login and Open keypaste. It holds no password; a pick asks keypaste for that one login and fills it.
@@ -29,18 +37,17 @@ class CredentialAutocomplete extends Autocomplete {
         }
 
         if (answer.state === 'locked') {
-            rows.push({ kind: 'action', icon: 'lock', text: tr('loginListKeypasteLocked'), button: tr('loginListUnlock'), primary: true, act: 'unlock-keypaste' });
+            rows.push({ kind: 'status', icon: 'lock', text: tr('loginListKeypasteLocked'), button: tr('loginListUnlock'), act: 'unlock-keypaste' });
             return rows;
         }
 
         if (answer.state !== 'unlocked') {
-            const notes = { unpaired: 'loginListNotPaired', frame: 'credentialsBlockedInIframe', refused: 'loginListRefused' };
-            rows.push({ kind: 'note', text: tr(notes[answer.state] ?? 'errorNotConnected'), warning: true });
+            rows.push(STATE_ROWS[answer.state] ?? STATE_ROWS.disconnected);
             return rows;
         }
 
         if (answer.warning) {
-            rows.push({ kind: 'note', text: answer.warning, warning: true });
+            rows.push({ kind: 'warning', text: answer.warning });
         }
 
         for (const entry of this.elements) {
@@ -48,11 +55,11 @@ class CredentialAutocomplete extends Autocomplete {
         }
 
         for (const vault of answer.lockedVaults ?? []) {
-            rows.push({ kind: 'locked-vault', icon: 'lock', text: tr('loginListVaultLocked', [ vault ]), button: tr('loginListUnlock'), act: 'unlock', vault });
+            rows.push({ kind: 'status', icon: 'lock', text: tr('loginListVaultLocked', [ vault ]), button: tr('loginListUnlock'), act: 'unlock', vault });
         }
 
         if (this.elements.length === 0) {
-            rows.push({ kind: 'note', text: answer.site ? tr('loginListNoLogins', [ answer.site ]) : tr('credentialsNoLoginsFound') });
+            rows.push({ kind: 'note', text: tr('loginListNoLogins') });
         }
 
         rows.push({ kind: 'action', icon: 'plus', text: tr('loginListNewLogin'), act: 'new-login', vault: this.elements[0]?.vault ?? '' });
@@ -86,9 +93,15 @@ class CredentialAutocomplete extends Autocomplete {
         }
 
         e.stopPropagation();
+        const field = this.input;
         this.closeList();
 
-        if (row.act === 'unlock-keypaste') {
+        if (row.act === 'retry') {
+            await kpxc.reconnect();
+            await this.open(field);
+        } else if (row.act === 'pair') {
+            await sendMessage('open_options');
+        } else if (row.act === 'unlock-keypaste') {
             await sendMessage('get_database_hash', [ false, true ]); // Asks keypaste to show its unlock
         } else {
             await sendMessage('open_keypaste', [ row.act, row.vault ?? '' ]);

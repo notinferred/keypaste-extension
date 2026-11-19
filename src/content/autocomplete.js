@@ -5,6 +5,9 @@ const MAX_AUTOCOMPLETE_NAME_LEN = 50;
 // A pick counts only once the list has been on screen this long, so a list slipped under a click already on its way fills nothing.
 const LIST_SETTLE_MS = 500;
 
+// How far the list keeps inside the viewport's edges.
+const VIEWPORT_MARGIN = 8;
+
 function cancelEvent(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -51,7 +54,7 @@ class Autocomplete {
 
     async itemEnter(item) {}
 
-    // The rows to draw: logins, then notes and actions, each { kind, ... }.
+    // The rows to draw, each { kind, ... }: the site and a warning head the list, logins, notes and states fill it, actions end it.
     rows() {
         return [];
     }
@@ -66,7 +69,11 @@ class Autocomplete {
         this.wrapper = kpxcUI.createElement('div');
         this.wrapper.style.all = 'unset';
         this.wrapper.style.display = 'none';
-        styleSheet.addEventListener('load', () => (this.wrapper.style.display = 'block'));
+        // The list measures nothing until its stylesheet shows it, so it is placed again then.
+        styleSheet.addEventListener('load', () => {
+            this.wrapper.style.display = 'block';
+            this.updatePosition();
+        });
         this.container = kpxcUI.createElement('div', 'kpxcAutocomplete-container', {
             id: 'kpxcAutocomplete-container',
             popover: 'manual',
@@ -120,7 +127,7 @@ class Autocomplete {
 
         this.index = -1;
         for (const row of this.rows()) {
-            const place = row.kind === 'site' || row.warning ? this.header : row.kind === 'action' ? this.footer : this.list;
+            const place = row.kind === 'site' || row.kind === 'warning' ? this.header : row.kind === 'action' ? this.footer : this.list;
             place.append(this.drawRow(row));
         }
 
@@ -133,29 +140,33 @@ class Autocomplete {
     drawRow(row) {
         if (row.kind === 'site') {
             const site = kpxcUI.createElement('div', 'kpxcAutocomplete-site__name', {}, row.text);
-            site.prepend(kpxcUI.createKeyMark());
+            site.prepend(kpxcUI.createIcon('globe'));
             return site;
         }
 
+        if (row.kind === 'warning') {
+            const warning = kpxcUI.createElement('div', 'kpxcAutocomplete-warning', { role: 'alert' });
+            warning.append(kpxcUI.createIcon('triangle-alert'), kpxcUI.createElement('span', '', {}, row.text));
+            return warning;
+        }
+
         if (row.kind === 'note') {
-            return kpxcUI.createElement('div', `kpxcAutocomplete-note${row.warning ? ' kpxcAutocomplete-note--warning' : ''}`,
-                { role: row.warning ? 'alert' : 'note' }, row.text);
+            return kpxcUI.createElement('div', 'kpxcAutocomplete-note', { role: 'note' }, row.text);
         }
 
         if (row.kind === 'login') {
             return this.drawLogin(row);
         }
 
-        const action = kpxcUI.createElement('div', `kpxcAutocomplete-action${row.kind === 'locked-vault' ? ' kpxcAutocomplete-action--locked' : ''}`);
+        const action = kpxcUI.createElement('div', `kpxcAutocomplete-action${row.kind === 'status' ? ' kpxcAutocomplete-action--status' : ''}`);
         const label = kpxcUI.createElement('span', 'kpxcAutocomplete-action__label', {}, row.text);
         action.append(kpxcUI.createIcon(row.icon), label);
 
         if (row.button) {
-            const button = kpxcUI.createElement('button', `kpxcAutocomplete-button${row.primary ? ' kpxcAutocomplete-button--primary' : ''}`,
-                { type: 'button' }, row.button);
+            const button = kpxcUI.createElement('button', 'kpxcAutocomplete-button', { type: 'button' }, row.button);
             button.addEventListener('click', e => this.actionClick(e, row));
             action.append(button);
-        } else {
+        } else if (row.kind === 'action') {
             action.setAttribute('role', 'button');
             action.setAttribute('tabindex', '-1');
             action.addEventListener('click', e => this.actionClick(e, row));
@@ -174,8 +185,8 @@ class Autocomplete {
         });
         item.dataset.uuid = row.uuid;
 
-        const monogram = kpxcUI.createElement('div', 'kpxcAutocomplete-item__monogram', { 'aria-hidden': 'true' },
-            (row.title.trim()[0] ?? '?').toUpperCase());
+        const monogram = kpxcUI.createElement('div', 'kpxcAutocomplete-item__monogram', { 'aria-hidden': 'true' }, tileLetter(row.title));
+        monogram.style.backgroundColor = `var(--kp-tile-${tileHue(row.uuid)})`;
         const names = kpxcUI.createElement('div', 'kpxcAutocomplete-item__names');
         const title = row.title.length < MAX_AUTOCOMPLETE_NAME_LEN ? row.title : row.title.substr(0, MAX_AUTOCOMPLETE_NAME_LEN) + '…';
         names.append(
@@ -299,25 +310,26 @@ class Autocomplete {
         }
 
         const rect = this.input.getBoundingClientRect();
-        this.container.style.minWidth = Pixels(Math.max(this.input.offsetWidth, 260));
+        this.container.style.minWidth = `min(${Pixels(Math.max(this.input.offsetWidth, 260))}, calc(100vw - ${Pixels(2 * VIEWPORT_MARGIN)}))`;
         this.list.style.maxWidth = `max(${Pixels(this.input.offsetWidth)}, 420px)`;
 
         const zoom = kpxcUI.bodyStyle?.zoom || 1;
         const menuRect = this.container.getBoundingClientRect();
-        const below = (rect.bottom + menuRect.height) / zoom <= window.self.visualViewport.height;
+        const viewport = window.self.visualViewport;
+        // Below the field when it fits there, or when there is more room below than above.
+        const below = (rect.bottom + menuRect.height) / zoom <= viewport.height || rect.top / zoom < viewport.height - rect.bottom / zoom;
+        const top = (below ? rect.bottom + 4 : rect.top - menuRect.height - 4) / zoom;
+        const left = Math.max(VIEWPORT_MARGIN, Math.min(rect.left / zoom, viewport.width - menuRect.width / zoom - VIEWPORT_MARGIN));
 
         // In the top layer the list is placed against the viewport, beside the field.
         if (kpxcFields.popoverSupported) {
-            this.container.style.top = Pixels((below ? rect.bottom + 4 : rect.top - menuRect.height - 4) / zoom);
-            this.container.style.left = Pixels(rect.left / zoom);
+            this.container.style.top = Pixels(top);
+            this.container.style.left = Pixels(left);
             return;
         }
 
-        const scrollTop = kpxcUI.getScrollTop() / zoom;
-        const scrollLeft = kpxcUI.getScrollLeft() / zoom;
-        const top = below ? rect.bottom + 4 : rect.top - menuRect.height - 4;
-        this.container.style.top = Pixels(top / zoom + scrollTop);
-        this.container.style.left = Pixels(rect.left / zoom + scrollLeft);
+        this.container.style.top = Pixels(top + kpxcUI.getScrollTop() / zoom);
+        this.container.style.left = Pixels(left + kpxcUI.getScrollLeft() / zoom);
     }
 }
 

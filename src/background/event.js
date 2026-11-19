@@ -160,6 +160,7 @@ kpxcEvent.messageHandlers = {
     'fill_login': page.fillLogin,
     'load_settings': page.getSettings,
     'open_keypaste': page.openKeypaste,
+    'open_options': () => browser.runtime.openOptionsPage(),
     'lock_database': kpxcEvent.lockDatabase,
     'page_clear_logins': kpxcEvent.pageClearLogins,
     'page_get_autosubmit_performed': page.getAutoSubmitPerformed,

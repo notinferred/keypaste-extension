@@ -3,10 +3,6 @@
         "message": "Logins from keypaste",
         "description": "Accessible name of the autocomplete menu."
     },
-    "connectButtonTitle": {
-        "message": "Pair this browser with keypaste.",
-        "description": "Connect button title text."
-    },
     "contextMenuFillUsernameAndPassword": {
         "message": "Fill username and password",
         "description": "Context menu item for filling both username and password."
@@ -18,10 +14,6 @@
     "credentialsBlockedInIframe": {
         "message": "keypaste doesn't fill a frame from another site.",
         "description": "Alert message when filling credentials is blocked due to iframe restrictions."
-    },
-    "credentialsNoLoginsFound": {
-        "message": "No logins found.",
-        "description": "Shown when no credentials are found for the current page."
     },
     "credentialsNoUsername": {
         "message": "No username",
@@ -43,7 +35,7 @@
         "description": "Database hash not received."
     },
     "errorMessageDatabaseNotOpened": {
-        "message": "No vault is unlocked in keypaste.",
+        "message": "keypaste is locked.",
         "description": "Database not opened."
     },
     "errorMessageDecrypt": {
@@ -86,14 +78,15 @@
         "description": "No saved databases found."
     },
     "errorMessageTimeout": {
-        "message": "Can't reach keypaste. In keypaste, turn this browser on in Settings › Browser."
+        "message": "Can't reach keypaste."
     },
     "errorMessageUnknown": {
         "message": "Unknown error.",
         "description": "Unknown error."
     },
     "errorNotConnected": {
-        "message": "Not connected to keypaste."
+        "message": "Can't reach keypaste",
+        "description": "The popup's heading, the page's list and a notice when the extension can't reach keypaste."
     },
     "extensionDescription": {
         "message": "Fill your logins from keypaste",
@@ -112,24 +105,28 @@
         "description": "The page's list: brings keypaste forward to add a login."
     },
     "loginListNoLogins": {
-        "message": "No logins for $1",
-        "description": "The page's list when no login matches the site it names."
+        "message": "No logins",
+        "description": "The page's list and the login popup when no login matches the site."
     },
     "loginListNotFilled": {
-        "message": "keypaste did not fill this login.",
+        "message": "Not filled. Denied or locked in keypaste.",
         "description": "A pick keypaste refused, or the person denied in keypaste."
     },
     "loginListNotPaired": {
-        "message": "Pair this browser with keypaste from the toolbar button.",
+        "message": "This browser isn't paired",
         "description": "The page's list when the browser is not paired."
     },
     "loginListOpenKeypaste": {
         "message": "Open keypaste",
         "description": "The page's list: brings keypaste forward."
     },
+    "loginListPair": {
+        "message": "Pair…",
+        "description": "The page's list: opens the extension's page to pair this browser."
+    },
     "loginListRefused": {
-        "message": "keypaste did not answer. Try again.",
-        "description": "The page's list when keypaste refused or failed to list."
+        "message": "keypaste didn't answer",
+        "description": "The page's list and the popup's heading when keypaste refused or failed to answer."
     },
     "loginListUnlock": {
         "message": "Unlock…",
@@ -146,109 +143,99 @@
     "optionsAboutHeading": {
         "message": "About"
     },
-    "optionsAboutText": {
-        "message": "This extension is keypaste's modified version of KeePassXC-Browser 1.10.4.1 by the KeePassXC Team and its contributors, distributed under the GNU General Public License version 3. Its icons are Lucide's, under the ISC License, and its pages are set in Instrument Sans, under the SIL Open Font License; both licences follow."
+    "optionsBasedOn": {
+        "message": "Based on"
     },
-    "optionsCheckCode": {
-        "message": "Check that keypaste shows this code:"
+    "optionsBrowserSettings": {
+        "message": "Which browsers keypaste answers is in keypaste's Settings › Browser."
     },
-    "optionsConnectFailed": {
-        "message": "keypaste didn't pair this browser. Press Connect again, and pair in keypaste only if the codes match."
+    "optionsLastUsed": {
+        "message": "Last used"
     },
-    "optionsHowToPair": {
-        "message": "Press Connect, then pair in keypaste's window if it shows the same code as here."
+    "optionsLicences": {
+        "message": "Licences"
     },
-    "optionsNotPaired": {
-        "message": "This browser isn't paired."
+    "optionsName": {
+        "message": "Name"
     },
-    "optionsPaired": {
-        "message": "This browser is paired with keypaste as $1."
-    },
-    "optionsPairedTimes": {
-        "message": "Paired $1, last used $2."
+    "optionsPairedAt": {
+        "message": "Paired"
     },
     "optionsPairingHeading": {
         "message": "Pairing"
     },
-    "optionsSettingsHeading": {
-        "message": "keypaste's settings"
-    },
-    "optionsSettingsText": {
-        "message": "This extension has no settings of its own. Which browsers keypaste answers, and the pairings it keeps, are in keypaste's Settings › Browser."
+    "optionsStatus": {
+        "message": "Status"
     },
     "optionsTitle": {
-        "message": "keypaste",
+        "message": "keypaste extension",
         "description": "Options page title."
     },
-    "popupCheckKeypaste": {
-        "message": "Check keypaste"
+    "optionsToday": {
+        "message": "Today $1",
+        "description": "A time today, such as Today 8:52."
+    },
+    "optionsVersion": {
+        "message": "Version"
+    },
+    "pairingFailed": {
+        "message": "keypaste didn't pair this browser."
+    },
+    "pairingWaiting": {
+        "message": "Waiting for keypaste…"
     },
     "popupCheckingStatus": {
-        "message": "Checking status…",
+        "message": "Checking…",
         "description": "Checking status message in popup."
     },
-    "popupConfiguredAndAssociated": {
-        "message": "Connected · $1"
-    },
-    "popupConfiguredNotAssociated": {
-        "message": "keypaste isn't connected yet. This browser is paired as $1."
+    "popupClearFilter": {
+        "message": "Clear search"
     },
     "popupConfirmCode": {
-        "message": "Pair in keypaste only if it shows the same code."
+        "message": "Pair in keypaste only if it shows this code."
     },
     "popupConnectButton": {
-        "message": "Connect",
+        "message": "Pair this browser…",
         "description": "Popup Connect button text."
     },
-    "popupErrorEncountered": {
-        "message": "keypaste reports a problem:",
-        "description": "A text shown above error message in the popup."
+    "popupErrorRetry": {
+        "message": "Try again. If it keeps happening, restart keypaste."
     },
     "popupFilterText": {
-        "message": "Filter",
-        "description": "Text for login credentials quick filter."
+        "message": "Search",
+        "description": "Placeholder and accessible name of the login popup's search field."
     },
     "popupGettingStartedText": {
-        "message": "To fill from keypaste, turn this browser on in keypaste's Settings › Browser.",
-        "description": "Popup information message about Getting Started Guide."
+        "message": "In keypaste, turn this browser on in Settings › Browser.",
+        "description": "What to do when the extension can't reach keypaste."
     },
     "popupIframeDetected": {
-        "message": "This page has a frame from another site, which keypaste doesn't fill.",
-        "description": "Text shown when page can be added to Site Preferences with Allow Cross-Origin iframes option enabled."
-    },
-    "popupKeypasteUnreachable": {
-        "message": "Can't reach keypaste.",
-        "description": "Shown in the popup when the extension can't reach keypaste."
-    },
-    "popupLoginText": {
-        "message": "Choose the login to fill on this page.",
-        "description": "A popup message shown when one or multiple credentials are present."
+        "message": "keypaste doesn't fill the frame from another site on this page.",
+        "description": "Shown when the page has a frame from another site."
     },
     "popupNeedReconfigure": {
-        "message": "keypaste no longer recognizes this browser's pairing."
-    },
-    "popupNeedReconfigureMessage": {
-        "message": "Press Reconnect, then pair in keypaste's window if it shows the same code as here.",
-        "description": "A popup message shown when reconnect is needed."
-    },
-    "popupNotConfigured": {
-        "message": "Connect this browser to keypaste."
+        "message": "keypaste no longer knows this browser."
     },
     "popupReconnectButton": {
-        "message": "Reconnect",
+        "message": "Pair again…",
         "description": "Popup Reconnect button text."
     },
     "popupRedetectButton": {
         "message": "Find login fields again",
         "description": "Popup Redetect login fields button text."
     },
+    "popupRedetectFound": {
+        "message": "Found $1 login fields"
+    },
+    "popupRedetectFoundOne": {
+        "message": "Found 1 login field"
+    },
+    "popupRedetectNone": {
+        "message": "No login fields on this page"
+    },
     "popupReloadButton": {
         "message": "Try again",
         "description": "Popup Reload button text."
-    },
-    "popupReopenButton": {
-        "message": "Unlock",
-        "description": "Popup reopen database button text."
     },
     "popupSettingsText": {
         "message": "Settings",
@@ -257,10 +244,6 @@
     "popupTitle": {
         "message": "keypaste",
         "description": "Popup window title."
-    },
-    "reconnectButtonTitle": {
-        "message": "Pair this browser with keypaste again.",
-        "description": "Reconnect button title text."
     },
     "redetectButtonTitle": {
         "message": "Looks for login fields on this page again.",
@@ -274,15 +257,27 @@
         "message": "Brings keypaste forward to unlock the vault.",
         "description": "Reopen database button title text."
     },
+    "stateLocked": {
+        "message": "Locked"
+    },
+    "stateNotPaired": {
+        "message": "Not paired"
+    },
+    "statePaired": {
+        "message": "Paired"
+    },
+    "statePairing": {
+        "message": "Pairing"
+    },
     "usernameDisconnectedFieldText": {
-        "message": "keypaste isn't connected."
+        "message": "Fill from keypaste. Can't reach keypaste."
     },
     "usernameFieldText": {
-        "message": "Fill from keypaste.",
+        "message": "Fill from keypaste",
         "description": "Username field icon hover text."
     },
     "usernameLockedFieldText": {
-        "message": "The vault is locked.",
+        "message": "Fill from keypaste. keypaste is locked.",
         "description": "Username field icon hover text when database is locked."
     }
 }

@@ -242,6 +242,7 @@ kpxc.initLoginPopup = function() {
             login: credential.login,
             loginId: loginId,
             uuid: credential.uuid,
+            vault: credential.vault ?? '',
             expired: credential.expired === 'true',
             text: text
         };
@@ -282,7 +283,7 @@ kpxc.initLoginPopup = function() {
 
     const popupLoginItems = [];
     for (const l of loginItems) {
-        popupLoginItems.push({ text: l.text, title: l.title, username: l.visibleLogin, expired: l.expired, uuid: l.uuid });
+        popupLoginItems.push({ text: l.text, title: l.title, username: l.visibleLogin, expired: l.expired, uuid: l.uuid, vault: l.vault });
     }
 
     // Activate Popup Login list of usernames + descriptions
@@ -421,7 +422,10 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
         } else if (req.action === 'clear_credentials') {
             kpxc.clearAllFromPage();
         } else if (req.action === 'fill_user_pass_with_specific_login') {
-            await kpxc.reconnect();
+            if (!await kpxc.reconnect()) {
+                kpxcUI.createNotification('error', tr('errorNotConnected'));
+                return;
+            }
             kpxcFill.fillFromPopup(req.uuid);
         } else if (req.action === 'fill_username_password') {
             // The browser's own shortcut, which the page cannot press, opens the list as the key icon does.
@@ -439,22 +443,18 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
             kpxc.settings = response;
             kpxc.inputs = [];
             kpxc.combinations = [];
-            kpxc.initCredentialFields();
+            await kpxc.initCredentialFields();
+            return kpxc.inputs.length;
         }
     }
 });
 
-// Automatically reconnect to keypaste
-// returns true if connected afterwards
+// Reconnects to keypaste if needed and says whether it is reachable; the list, or a notification, tells the person.
 kpxc.reconnect = async function() {
-    // Try to reconnect if keypaste is not currently connected
     const connected = await sendMessage('is_connected');
     if (!connected) {
         const reconnectResponse = await sendMessage('reconnect');
-        if (!reconnectResponse.keypasteAvailable) {
-            kpxcUI.createNotification('error', tr('errorNotConnected'));
-            return false;
-        }
+        return Boolean(reconnectResponse.keypasteAvailable);
     }
     return true;
 };

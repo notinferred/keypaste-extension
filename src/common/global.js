@@ -24,21 +24,30 @@ const ManualFill = {
     BOTH: 2
 };
 
+const TILE_HUES = 7;
+
+// The desktop folds a UUID's bytes in .NET's Guid order, whose first three fields are little-endian, so a login takes the same hue in both.
+const GUID_BYTE_ORDER = [ 3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15 ];
+
+// Which of DESIGN's seven tile hues, from 1, a login takes from its UUID's 32 hex digits.
+const tileHue = function(uuid = '') {
+    const bytes = (uuid.match(/[0-9a-f]{2}/gi) ?? []).map(pair => parseInt(pair, 16));
+    const ordered = bytes.length === 16 ? GUID_BYTE_ORDER.map(i => bytes[i]) : bytes;
+    const folded = ordered.reduce((sum, byte) => (Math.imul(sum, 31) + byte) >>> 0, 0);
+    return (folded % TILE_HUES) + 1;
+};
+
+// The first letter or digit of a title, as the tile shows it.
+const tileLetter = function(title = '') {
+    return (title.match(/[\p{L}\p{N}]/u)?.[0] ?? '?').toUpperCase();
+};
+
 const isFirefox = function() {
     return browser.runtime.getURL('')?.startsWith('moz-extension');
 };
 
 const isSafari = function() {
     return browser.runtime.getURL('')?.startsWith('safari-web-extension');
-};
-
-const getIconClass = function(className) {
-    if (isFirefox()) {
-        return className + '-moz';
-    } else if (isSafari()) {
-        return className + '-safari';
-    }
-    return className;
 };
 
 // Returns a string with 'px' for CSS styles
@@ -151,5 +160,7 @@ if (typeof module === 'object') {
         elementsOverlap,
         matchesWithNodeName,
         siteMatch,
+        tileHue,
+        tileLetter,
     };
 }
