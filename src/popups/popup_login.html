@@ -8,45 +8,49 @@
     <link rel="stylesheet" href="popup.css">
     <script src="../common/browser-polyfill.min.js"></script>
     <script src="../common/global.js"></script>
-    <script src="../common/global_ui.js"></script>
     <script src="popup_functions.js"></script>
     <script defer src="popup_login.js"></script>
     <script defer src="../common/translate.js"></script>
   </head>
   <body>
     <header id="settings" class="bar">
-      <h1 data-i18n="popupTitle"></h1>
+      <h1><span id="state" data-i18n="statePaired"></span><span id="state-detail"></span></h1>
+      <button id="lock-database-button" class="button quiet" type="button" data-i18n="[title]lockDatabase">
+        <!-- Lucide lock, ISC -->
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </button>
       <button id="options-button" class="button quiet" type="button" data-i18n="[title]popupSettingsText">
         <!-- Lucide settings, ISC -->
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
-      <button id="lock-database-button" class="button quiet" type="button" hidden data-i18n="[title]lockDatabase">
-        <!-- Lucide lock, ISC -->
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      </button>
     </header>
 
     <main class="content">
-      <section id="credentialsList" class="credentials">
-        <p id="login-text" data-i18n="popupLoginText"></p>
-        <div id="filter-block">
-          <label class="label" for="login-filter" data-i18n="popupFilterText"></label>
-          <input class="field" type="search" id="login-filter" autocomplete="off">
+      <section id="credentialsList">
+        <p id="login-site" class="site"></p>
+        <div id="filter-block" class="search" hidden>
+          <!-- Lucide search, ISC -->
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="login-filter" autocomplete="off" data-i18n="[placeholder]popupFilterText">
+          <button id="clear-filter" class="button quiet" type="button" hidden data-i18n="[title]popupClearFilter">
+            <!-- Lucide x, ISC -->
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
         </div>
-        <ul id="login-list" class="logins" aria-labelledby="login-text"></ul>
+        <ul id="login-list" class="logins group" aria-labelledby="login-site"></ul>
+        <div id="no-logins" hidden>
+          <p class="empty" data-i18n="loginListNoLogins"></p>
+          <div class="actions">
+            <button id="new-login-button" class="button" type="button" data-i18n="loginListNewLogin"></button>
+          </div>
+        </div>
       </section>
 
-      <section id="database-not-opened">
-        <p class="note">
-          <!-- Lucide lock, ISC -->
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <span id="database-error-message"></span>
-        </p>
+      <section id="database-not-opened" hidden>
+        <p data-i18n="errorMessageDatabaseNotOpened"></p>
         <div class="actions">
           <button id="reopen-database-button" class="button primary" type="button" data-i18n="[title]reopenDatabaseButtonTitle">
-            <!-- Lucide lock-open, ISC -->
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-            <span data-i18n="popupReopenButton"></span>
+            <span data-i18n="loginListUnlock"></span>
           </button>
         </div>
       </section>
