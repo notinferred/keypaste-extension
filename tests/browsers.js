@@ -165,9 +165,8 @@ const pair = async function(app, build, press) {
 };
 
 const requirePaired = async function(app, build, name, shown) {
-    const expected = `This browser is paired with keypaste as ${name}.`;
-    if (shown !== expected) {
-        throw new Error(`the options page says '${shown}', not '${expected}'`);
+    if (shown !== name) {
+        throw new Error(`the options page names the pairing '${shown}', not '${name}'`);
     }
     const listed = await app.act('pairings', new RegExp(`^pairing identity=${escape(build)} name=${escape(name)}$|^pairings none$`));
     if (listed === 'pairings none') {
