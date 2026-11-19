@@ -1,93 +1,103 @@
-/* keypaste's palette from docs/DESIGN.md, for the pages and the content scripts' shadow roots */
+/* keypaste's Native palette from docs/DESIGN.md with system blue as the accent, as keypaste.com's brand.css derives it, for the pages and the content scripts' shadow roots */
 :root,
 :host {
     color-scheme: light;
-    --kp-ground: #F7F7F5;
-    --kp-panel: #FFFFFF;
+    --kp-window: #FFFFFF;
+    --kp-panel: #F5F5F7;
     --kp-card: #FFFFFF;
-    --kp-hover: #EFEFEC;
-    --kp-secondary: #E6E6E2;
-    --kp-secondary-hover: #DDDDD8;
-    --kp-line-subtle: #E8E8E4;
-    --kp-line: #DCDCD7;
-    --kp-line-strong: #C4C4BE;
-    --kp-edge: #84847F;
-    --kp-edge-hover: #6B6D72;
-    --kp-text: #111214;
-    --kp-text-secondary: #3A3C40;
-    --kp-text-muted: #6B6D72;
-    --kp-text-disabled: #A3A5A9;
-    --kp-amber: #F2B544;
-    --kp-amber-hover: #F7C566;
-    --kp-amber-press: #D99D2E;
-    --kp-amber-mark: #8A5A00;
-    --kp-amber-tint: rgb(242 181 68 / 0.12);
-    --kp-amber-glow: rgb(242 181 68 / 0.15);
-    --kp-on-amber: #111214;
-    --kp-ok: #007840;
-    --kp-danger: #B02A2D;
-    --kp-info: #296898;
-    --kp-danger-tint: rgb(176 42 45 / 0.12);
-    --kp-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.35);
-    --kp-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --kp-mono: "Fragment Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --kp-hover: #EDEDEF;
+    --kp-active: #E5E5EA;
+    --kp-line-subtle: #E4E4E7;
+    --kp-line: #D1D1D6;
+    --kp-line-strong: #C7C7CC;
+    --kp-edge: #86868B;
+    --kp-edge-hover: #6B6B70;
+    --kp-text: #1D1D1F;
+    --kp-text-secondary: #515154;
+    --kp-text-muted: #6B6B70;
+    --kp-text-disabled: #A6A6AB;
+    --kp-accent: #0070EB;
+    --kp-accent-hover: #0061CC;
+    --kp-accent-press: #0053AE;
+    --kp-accent-tint: #DBECFF;
+    --kp-on-accent: #FFFFFF;
+    --kp-ring: #007AFF;
+    --kp-glow: rgb(0 122 255 / 0.28);
+    --kp-ok: #1A7A35;
+    --kp-warn: #9A5B00;
+    --kp-danger: #C4261F;
+    --kp-danger-tint: rgb(196 38 31 / 0.10);
+    --kp-info: #5856D6;
+    --kp-tile-1: #3A7BD5;
+    --kp-tile-2: #2F9E6E;
+    --kp-tile-3: #C2410C;
+    --kp-tile-4: #7C4DCC;
+    --kp-tile-5: #B4235A;
+    --kp-tile-6: #5B6472;
+    --kp-tile-7: #0E7490;
+    --kp-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.25), 0 0 0 0.5px rgb(0 0 0 / 0.25);
+    --kp-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    --kp-mono: ui-monospace, "SF Mono", Menlo, "Cascadia Mono", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
     :root,
     :host {
         color-scheme: dark;
-        --kp-ground: #111214;
-        --kp-panel: #18191C;
-        --kp-card: #1D1E22;
-        --kp-hover: #24262A;
-        --kp-secondary: #2A2C30;
-        --kp-secondary-hover: #33363B;
-        --kp-line-subtle: #26282C;
-        --kp-line: #2C2E33;
-        --kp-line-strong: #3A3D43;
-        --kp-edge: #74767C;
-        --kp-edge-hover: #8E9096;
-        --kp-text: #F2F2F0;
-        --kp-text-secondary: #C9CACD;
-        --kp-text-muted: #8E9096;
-        --kp-text-disabled: #55575C;
-        --kp-amber-mark: #F2B544;
-        --kp-ok: #72D699;
-        --kp-danger: #F7857D;
-        --kp-info: #7FBEF3;
-        --kp-danger-tint: rgb(247 133 125 / 0.12);
+        --kp-window: #1E1E1F;
+        --kp-panel: #252527;
+        --kp-card: #2A2A2C;
+        --kp-hover: #2E2E30;
+        --kp-active: #3A3A3C;
+        --kp-line-subtle: #333336;
+        --kp-line: #444448;
+        --kp-line-strong: #545458;
+        --kp-edge: #7C7C82;
+        --kp-edge-hover: #98989D;
+        --kp-text: #F5F5F7;
+        --kp-text-secondary: #B4B4BA;
+        --kp-text-muted: #949499;
+        --kp-text-disabled: #5A5A5F;
+        --kp-accent: #0072E5;
+        --kp-accent-hover: #0063C6;
+        --kp-accent-press: #0054A8;
+        --kp-accent-tint: #193655;
+        --kp-ring: #0A84FF;
+        --kp-glow: rgb(10 132 255 / 0.28);
+        --kp-ok: #3DD06B;
+        --kp-warn: #FFB340;
+        --kp-danger: #FF6961;
+        --kp-danger-tint: rgb(255 105 97 / 0.14);
+        --kp-info: #A09EFF;
     }
 }
 
 @media (prefers-contrast: more) {
     :root,
     :host {
-        --kp-line-subtle: #55575C;
-        --kp-line: #4A4C50;
-        --kp-line-strong: #3A3C40;
-        --kp-edge: #3A3C40;
-        --kp-edge-hover: #1D1E22;
+        --kp-line-subtle: #6E6E73;
+        --kp-line: #545458;
+        --kp-line-strong: #3A3A3C;
+        --kp-edge: #3A3A3C;
+        --kp-edge-hover: #1D1D1F;
         --kp-text: #000000;
-        --kp-text-secondary: #1D1E22;
-        --kp-text-muted: #3A3C40;
-        --kp-text-disabled: #55575C;
-        --kp-amber-mark: #6B4500;
+        --kp-text-secondary: #1D1D1F;
+        --kp-text-muted: #3A3A3C;
+        --kp-text-disabled: #545458;
     }
 }
 
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
     :root,
     :host {
-        --kp-line-subtle: #A9ABB0;
-        --kp-line: #B4B6BB;
-        --kp-line-strong: #C9CACD;
-        --kp-edge: #C9CACD;
-        --kp-edge-hover: #F2F2F0;
+        --kp-line-subtle: #8E8E93;
+        --kp-line: #A1A1A6;
+        --kp-line-strong: #C7C7CC;
+        --kp-edge: #C7C7CC;
+        --kp-edge-hover: #F5F5F7;
         --kp-text: #FFFFFF;
-        --kp-text-secondary: #F2F2F0;
-        --kp-text-muted: #D9DADD;
-        --kp-text-disabled: #A9ABB0;
-        --kp-amber-mark: #F2B544;
+        --kp-text-secondary: #F5F5F7;
+        --kp-text-muted: #D1D1D6;
+        --kp-text-disabled: #A1A1A6;
     }
 }

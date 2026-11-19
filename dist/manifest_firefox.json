@@ -78,9 +78,7 @@
         }
     },
     "web_accessible_resources": [
-        "icons/keypaste.svg",
-        "icons/keypaste-disconnected.svg",
-        "icons/keypaste-locked.svg",
+        "icons/field-key.svg",
         "css/autocomplete.css",
         "css/colors.css",
         "css/notification.css",

@@ -131,7 +131,7 @@ const pairChromium = async function(app) {
         // Connect is pressed at once, while the extension may still be starting keypaste, as a person might.
         const name = await pair(app, build, () => page.locator('#connect-button').click());
         await page.locator('#paired').waitFor({ state: 'visible', timeout: WAIT_MS });
-        await requirePaired(app, build, name, (await page.locator('#paired').textContent()).trim());
+        await requirePaired(app, build, name, (await page.locator('#pairing-name').textContent()).trim());
     } catch (error) {
         const shown = page ? await page.locator('body').innerText().catch((reason) => `(${reason.message})`) : '(no page)';
         const status = page ? await statusOr(() => page.evaluate((message) => browser.runtime.sendMessage(message), STATUS_ACTION)) : '(no page)';
@@ -166,8 +166,9 @@ const pairFirefox = async function(app) {
         await gecko.waitDisplayed('#paired', false);
         const connect = await gecko.element('#connect-button');
         const name = await pair(app, build, () => gecko.session('POST', `/element/${connect}/click`, {}));
-        const paired = await gecko.waitDisplayed('#paired');
-        await requirePaired(app, build, name, (await gecko.session('GET', `/element/${paired}/text`)).trim());
+        await gecko.waitDisplayed('#paired');
+        const pairingName = await gecko.element('#pairing-name');
+        await requirePaired(app, build, name, (await gecko.session('GET', `/element/${pairingName}/text`)).trim());
     } catch (error) {
         const shown = gecko?.id
             ? await gecko.session('POST', '/execute/sync', { script: 'return document.body.innerText;', args: [] }).catch((reason) => `(${reason.message})`)

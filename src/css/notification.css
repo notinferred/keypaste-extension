@@ -48,7 +48,7 @@
 }
 
 .kpxc-notification-warning > .kpxc-icon {
-    color: var(--kp-amber-mark);
+    color: var(--kp-warn);
 }
 
 .kpxc-notification-error > .kpxc-icon {
@@ -92,6 +92,6 @@
 }
 
 .kpxc-notification-dismiss:focus-visible {
-    outline: 2px solid var(--kp-amber-mark);
-    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--kp-card), 0 0 0 4px var(--kp-ring);
+    outline: none;
 }

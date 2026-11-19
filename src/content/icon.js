@@ -51,12 +51,4 @@ class Icon {
         this.shadowRoot.removeChild(this.icon);
         document.body.removeChild(this.shadowRoot.host);
     }
-
-    switchIcon(state) {
-        if (!this.icon) {
-            return;
-        }
-
-        this.icon.style.filter = state === DatabaseState.UNLOCKED ? 'saturate(100%)' : 'saturate(0%)';
-    }
 }

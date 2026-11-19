@@ -33,6 +33,7 @@ class UsernameFieldIcon extends Icon {
         kpxcIcons.monitorIconPosition(this);
     }
 
+    // The key icon looks the same in every state; its name says whether keypaste is locked or out of reach.
     switchIcon(state) {
         if (!this.icon) {
             return;
@@ -40,11 +41,7 @@ class UsernameFieldIcon extends Icon {
             this.observer.disconnect();
         }
 
-        this.icon.classList.remove('lock', 'lock-moz', 'unlock', 'unlock-moz', 'disconnected', 'disconnected-moz');
-        this.icon.classList.add(getIconClassName(state));
         this.icon.title = getIconText(state);
-
-        this.icon.style.filter = state === DatabaseState.UNLOCKED ? 'saturate(100%)' : 'saturate(0%)';
     }
 }
 
@@ -59,7 +56,6 @@ UsernameFieldIcon.prototype.initField = function(field) {
 };
 
 UsernameFieldIcon.prototype.createIcon = function(field) {
-    const className = getIconClassName(this.databaseState);
     const size = this.calculateIconSize(field);
 
     // Don't create the icon if the input field is too small
@@ -68,7 +64,7 @@ UsernameFieldIcon.prototype.createIcon = function(field) {
         return;
     }
 
-    const icon = kpxcUI.createElement('div', 'kpxc kpxc-username-icon ' + className,
+    const icon = kpxcUI.createElement('div', 'kpxc kpxc-username-icon ' + browserClassName(),
         {
             'title': getIconText(this.databaseState),
             'size': size,
@@ -123,14 +119,9 @@ const iconClicked = async function(field, icon) {
     await kpxcUserAutocomplete.open(field);
 };
 
-const getIconClassName = function(state = DatabaseState.UNLOCKED) {
-    if (state === DatabaseState.LOCKED) {
-        return getIconClass('lock');
-    } else if (state === DatabaseState.DISCONNECTED) {
-        return getIconClass('disconnected');
-    }
-
-    return getIconClass('unlock');
+// Which of username.css's rules names the icon's address in this browser.
+const browserClassName = function() {
+    return isFirefox() ? 'moz' : isSafari() ? 'safari' : 'chrome';
 };
 
 const getIconText = function(state) {

@@ -118,9 +118,10 @@ const LUCIDE_ICONS = {
         [ 'path', { d: 'M10 14 21 3' } ],
         [ 'path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' } ]
     ],
-    'key-round': [
-        [ 'path', { d: 'M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z' } ],
-        [ 'circle', { cx: 16.5, cy: 7.5, r: 0.5, fill: 'currentColor' } ]
+    'globe': [
+        [ 'circle', { cx: 12, cy: 12, r: 10 } ],
+        [ 'path', { d: 'M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20' } ],
+        [ 'path', { d: 'M2 12h20' } ]
     ],
 };
 
@@ -145,11 +146,6 @@ kpxcUI.createIcon = function(name) {
         svg.append(child);
     }
     return svg;
-};
-
-// The key mark that heads keypaste's list beside the page's site.
-kpxcUI.createKeyMark = function() {
-    return kpxcUI.createIcon('key-round');
 };
 
 /**

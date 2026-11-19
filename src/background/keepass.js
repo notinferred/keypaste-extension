@@ -103,7 +103,8 @@ keepass.getLogin = async function(tab, args = []) {
 // Brings keypaste forward for what the person pressed in the list: open, unlock with the locked vault's name, or new-login with the site's vault and the page it is for.
 keepass.openKeypaste = async function(tab, args = []) {
     const [ what, vault = '' ] = args;
-    const url = what === 'new-login' ? tab?.url ?? '' : '';
+    // The toolbar popup's messages carry only the tab's ID, so its address comes from the browser.
+    const url = what === 'new-login' ? tab?.url ?? (tab?.id ? (await browser.tabs.get(tab.id)).url : '') ?? '' : '';
     const { message } = await keepass.ask(kpActions.OPEN_KEYPASTE, tab, { action: kpActions.OPEN_KEYPASTE, what: what, vault: vault, url: url });
     return Boolean(message);
 };
