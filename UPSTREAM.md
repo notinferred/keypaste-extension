@@ -54,7 +54,7 @@ Permissions go from `activeTab`, `clipboardWrite`, `contextMenus`, `cookies`, `n
 
 ### Restyled
 
-The popup, the login popup, the options page, the field icon, the drop-down and the page notifications follow keypaste's [design system](../docs/DESIGN.md), light and dark, in hand-written CSS: `css/colors.css` holds the palette as variables for the pages and the shadow roots, and `css/page.css` the pages' type, buttons, fields, focus ring and notes. The content scripts' UI stays in closed shadow roots, as upstream's does.
+The popup, the login popup, the options page, the field icon, the drop-down and the page notifications follow keypaste's design system, light and dark, in hand-written CSS: `css/colors.css` holds the palette as variables for the pages and the shadow roots, and `css/page.css` the pages' type, buttons, fields, focus ring and notes. The content scripts' UI stays in closed shadow roots, as upstream's does.
 
 - Icons are Lucide's, from `third_party/lucide/icons/`, inline in the pages and drawn by `kpxcUI.createIcon` in the content scripts.
 - The palette is DESIGN's Native one with system blue as the accent, as keypaste.com's `brand.css` derives it, and the pages and the content scripts use the system's interface and monospace faces, bundling none.
