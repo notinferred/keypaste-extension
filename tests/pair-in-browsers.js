@@ -113,7 +113,7 @@ const pairChromium = async function(app) {
         const listen = (worker) => worker.on('console', (message) => consoles.push(`worker ${message.type()}: ${message.text()}`));
         context.on('serviceworker', listen);
         context.serviceWorkers().forEach(listen);
-        // Chromium runs component extensions of its own beside keypaste's, so the worker is found by the ID the test key gives.
+        // Chromium runs component extensions of its own beside keypaste's, so the worker is found by the ID the manifest key gives.
         const ours = (worker) => new URL(worker.url()).host === chromeId;
         const worker = context.serviceWorkers().find(ours)
             ?? await context.waitForEvent('serviceworker', { predicate: ours, timeout: WAIT_MS }).catch(() => {

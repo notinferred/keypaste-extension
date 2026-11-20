@@ -66,7 +66,7 @@ The popup, the login popup, the options page, the field icon, the drop-down and 
 ### Renamed
 
 - The native host `org.keepassxc.keepassxc_browser` is `com.keypaste.browser`.
-- The extension is `keypaste`, described as "Fill your logins from keypaste", version `1.0.0`, homepage `https://keypaste.com`; Firefox's add-on ID is `browser@keypaste.invalid` and the Chromium manifest's `key` is `test-keys/chrome.pub`, whose ID `BrowserIdentity.cs` names, until H-0029 supplies the stores'.
+- The extension is `keypaste`, described as "Fill your logins from keypaste", version `1.0.0`, homepage `https://keypaste.com`; Firefox's add-on ID is `browser@keypaste.com`, and the Chromium manifest's `key` is the Chrome Web Store item's public key, `keys/chrome.pub`.
 - Strings that named KeePassXC as the app name keypaste, in keypaste's words: vault for database, and sentence case.
 - `content/keepassxc-browser.js` is `content/keypaste.js`, and `isKeePassXCAvailable` and the status's `keePassXCAvailable` are `isKeypasteAvailable` and `keypasteAvailable`.
 - `build.js` writes `artifacts/extension/keypaste-chromium.zip` and `keypaste-firefox.zip`, and an unpacked copy of each carrying `LICENSE`, byte for byte the same on every run, without Transifex and without changing `src/`. `tests/pair-in-browsers.js` is keypaste's, driven by `scripts/verify-extension-load.sh`.

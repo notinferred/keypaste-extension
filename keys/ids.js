@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Prints each test public key as a Chromium manifest `key` and the extension ID it gives: the first 32 hex digits of
+// Prints each public key as a Chromium manifest `key` and the extension ID it gives: the first 32 hex digits of
 // the SHA-256 of its DER SubjectPublicKeyInfo, each digit 0-f written as a-p.
 
 const crypto = require('node:crypto');

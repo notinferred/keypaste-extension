@@ -9,7 +9,7 @@ const net = require('node:net');
 const readline = require('node:readline');
 
 const WAIT_MS = 60 * 1000;
-const FIREFOX_ID = 'browser@keypaste.invalid';
+const FIREFOX_ID = 'browser@keypaste.com';
 const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
 
 // The background's own answer to get_status, without asking keypaste again.
