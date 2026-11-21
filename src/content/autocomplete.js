@@ -69,8 +69,9 @@ class Autocomplete {
         this.wrapper = kpxcUI.createElement('div');
         this.wrapper.style.all = 'unset';
         this.wrapper.style.display = 'none';
-        // The list measures nothing until its stylesheet shows it, so it is placed again then.
-        styleSheet.addEventListener('load', () => {
+        // The list measures nothing until both stylesheets arrive, the colors carrying its fonts and spacing, so it is shown and placed then.
+        const loaded = sheet => new Promise(resolve => sheet.addEventListener('load', resolve, { once: true }));
+        Promise.all([ loaded(styleSheet), loaded(colorStyleSheet) ]).then(() => {
             this.wrapper.style.display = 'block';
             this.updatePosition();
         });

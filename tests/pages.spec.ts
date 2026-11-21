@@ -141,7 +141,19 @@ const CONTENT_SCRIPTS = [ 'common/browser-polyfill.min.js', 'common/global.js', 
 // The page's list for an answer on a site's page, opened beside a field placed at left, its rows read through a shadow root left open.
 const openList = async (page: Page, answer: Record<string, unknown>, left = 40) => {
     const extension = 'https://extension.test/';
-    await page.route(`${extension}**`, route => route.fulfill({ path: `src/${new URL(route.request().url()).pathname.slice(1)}` }));
+    // The colors, which carry the list's fonts and spacing, arrive after its layout, as they may on a busy page.
+    let layoutServed: () => void;
+    const layout = new Promise<void>(resolve => layoutServed = resolve);
+    await page.route(`${extension}**`, async route => {
+        const path = new URL(route.request().url()).pathname.slice(1);
+        if (path === 'css/colors.css') {
+            await layout;
+        }
+        await route.fulfill({ path: `src/${path}` });
+        if (path === 'css/autocomplete.css') {
+            layoutServed();
+        }
+    });
     await page.route('https://site.test/', route => route.fulfill({ contentType: 'text/html',
         body: `<!doctype html><body><input id="field" style="position:absolute;top:40px;left:${left}px;width:200px"></body>` }));
     await stubExtension(page, { list_logins: answer, load_settings: {}, get_status: { keypasteAvailable: true }, is_connected: true, is_iframe_allowed: true }, {}, extension);
