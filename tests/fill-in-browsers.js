@@ -31,7 +31,7 @@ const settings = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const { root, driver, keypaste, vault, real, geckodriver } = settings;
 
 // The build each browser loads, the ID its store gives it, and how keypaste names it: Chromium and Brave take the Chrome Web
-// Store's build, and Edge its own under the Edge test key.
+// Store's build, and Edge its own under Microsoft Edge Add-ons' key.
 const chromeBuild = { build: settings.chromiumBuild, id: settings.chromeId, identity: `keypaste's extension from the Chrome Web Store (${settings.chromeId})` };
 const BUILDS = {
     chromium: chromeBuild,
