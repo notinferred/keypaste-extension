@@ -11,7 +11,7 @@
 //
 // Usage: fill-in-browsers.js <settings.json>, written by verify-browser-fill.sh:
 //   { root, driver, keypaste, vault, real, geckodriver, cert, key, chromiumBuild, edgeBuild, firefoxBuild, chromeId, edgeId,
-//     browsers: [ { name: chromium|chrome|edge|brave|firefox, executable } ] }
+//     browsers: [ { name: chromium|chrome|edge|brave|firefox|librewolf, executable } ] }
 // With real set, keypaste is turned on in the browsers' own places for this user, as on a runner that is thrown away;
 // otherwise in folders under root.
 
@@ -40,6 +40,9 @@ const BUILDS = {
     edge: { build: settings.edgeBuild, id: settings.edgeId, identity: `keypaste's extension from Microsoft Edge Add-ons (${settings.edgeId})` },
     firefox: { build: settings.firefoxBuild, identity: `keypaste's extension from Firefox Add-ons (${FIREFOX_ID})` },
 };
+// LibreWolf, a Firefox fork, runs the Firefox build and reads Firefox's manifest (HostPlaces.Slot).
+BUILDS.librewolf = BUILDS.firefox;
+const runsFirefoxAddOn = (name) => name === 'firefox' || name === 'librewolf';
 const browsers = settings.browsers.map((browser) => ({ ...browser, ...BUILDS[browser.name] }));
 const { KEYPASTE_DRIVER_PASSWORD: master, ...inherited } = process.env;
 if (!master) {
@@ -91,7 +94,7 @@ const manifestDirectory = function(name) {
     if (platform === 'win32') {
         return path.join(localAppData, 'keypaste', 'NativeMessagingHosts');
     }
-    if (name === 'firefox') {
+    if (runsFirefoxAddOn(name)) {
         return platform === 'darwin'
             ? path.join(home, 'Library', 'Application Support', 'Mozilla', 'NativeMessagingHosts')
             : path.join(home, '.mozilla', 'native-messaging-hosts');
@@ -639,28 +642,41 @@ const runFirefox = async function(app, browser, ports, items) {
         const capabilities = await gecko.open(browser.executable, uuid, {
             'network.dns.forceResolve': '127.0.0.1',
             'dom.security.https_first': false,
+            // LibreWolf turns HTTPS-Only on, which refuses the http page whose fill keypaste must warn about.
+            'dom.security.https_only_mode': false,
             'signon.rememberSignons': false,
             'signon.autofillForms': false,
-        }, { acceptInsecureCerts: true });
-        console.log(`firefox: ${capabilities.browserVersion}`);
+        // LibreWolf's software renderer gets no surface in a headless window on Windows, so it runs in a visible one there.
+        }, { acceptInsecureCerts: true, headless: !(browser.name === 'librewolf' && platform === 'win32') });
+        console.log(`${browser.name}: ${capabilities.browserVersion}`);
         const installed = await gecko.session('POST', '/moz/addon/install', { path: browser.build, temporary: true });
         if (installed !== FIREFOX_ID) {
-            throw new Error(`Firefox installed the add-on as ${installed}, not ${FIREFOX_ID}`);
+            throw new Error(`${browser.name} installed the add-on as ${installed}, not ${FIREFOX_ID}`);
         }
         await gecko.openExtensionPage(`moz-extension://${uuid}/options/options.html`);
         await gecko.waitDisplayed('#paired', false);
         const connect = await gecko.element('#connect-button');
-        const pairing = await pair(app, browser.identity, () => gecko.session('POST', `/element/${connect}/click`, {}));
+        // A visible LibreWolf on Windows can take a moment to draw its page, and until then nothing in it can be clicked.
+        const press = () => until(
+            () => gecko.session('POST', `/element/${connect}/click`, {}).then(() => true, (error) => {
+                if (!/not interactable/.test(error.message)) {
+                    throw error;
+                }
+                return undefined;
+            }),
+            `${browser.name} to draw the Connect button`,
+            15000);
+        const pairing = await pair(app, browser.identity, press);
         await gecko.waitDisplayed('#paired');
-        await fillActs(app, new FirefoxTab(gecko), ports, items, 'firefox', pairing);
+        await fillActs(app, new FirefoxTab(gecko), ports, items, browser.name, pairing);
     } catch (error) {
         const shown = gecko?.id
             ? await new FirefoxTab(gecko).state().then(JSON.stringify, (reason) => `(${reason.message})`)
             : '(no session)';
-        await gecko?.stop().catch((reason) => console.error(`closing Firefox: ${reason.message}`));
+        await gecko?.stop().catch((reason) => console.error(`closing ${browser.name}: ${reason.message}`));
         report([
-            [ 'firefox: the page', shown ],
-            [ `host manifests in ${manifestDirectory('firefox')}`, listOr(manifestDirectory('firefox')) ],
+            [ `${browser.name}: the page`, shown ],
+            [ `host manifests in ${manifestDirectory(browser.name)}`, listOr(manifestDirectory(browser.name)) ],
             [ 'the owner\'s audit', auditText() ],
             [ `geckodriver's and Firefox's log, with the add-on's console and keypaste's standard error (${log})`, readOr(log) ],
         ]);
@@ -697,7 +713,7 @@ const requireNoHostLeft = async function(name) {
         await app.held();
         for (const browser of browsers) {
             await app.browserOn(browser.name);
-            browser.name === 'firefox'
+            runsFirefoxAddOn(browser.name)
                 ? await runFirefox(app, browser, ports, items)
                 : await runChromiumFamily(app, browser, ports, items, spki);
             await requireNoHostLeft(browser.name);
