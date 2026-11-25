@@ -198,9 +198,9 @@ test('Each state of the page\'s list says what is so and offers the way forward'
 });
 
 test('The page\'s list draws a warning as a row, no logins without the site again, and each login on its hue', async ({ page }) => {
-    const warned = await openList(page, { state: 'unlocked', site: 'github.com', warning: 'keypaste asks before each fill.', lockedVaults: [],
+    const warned = await openList(page, { state: 'unlocked', site: 'github.com', warning: 'This page\'s connection is not secure.', lockedVaults: [],
         entries: [ { name: 'GitHub', login: 'dan', uuid: '0123456789abcdef0123456789abcdef', vault: '' } ] });
-    expect(warned.rows[0]).toEqual([ 'keypaste asks before each fill.', null ]);
+    expect(warned.rows[0]).toEqual([ 'This page\'s connection is not secure.', null ]);
     expect(warned.tiles[0]).toBe(`var(--kp-tile-${tileHue('0123456789abcdef0123456789abcdef')})`);
 
     const empty = await openList(page, { state: 'unlocked', site: 'github.com', warning: '', lockedVaults: [], entries: [] });

@@ -77,7 +77,7 @@ keepass.listLogins = async function(tab, args = []) {
     }
 };
 
-// The one login the person picked, which keypaste fills at once on a site it filled before and otherwise asks about first.
+// The one login the person picked, which keypaste fills at once.
 keepass.getLogin = async function(tab, args = []) {
     try {
         const [ url, submitUrl, uuid ] = args;

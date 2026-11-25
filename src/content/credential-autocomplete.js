@@ -108,7 +108,7 @@ class CredentialAutocomplete extends Autocomplete {
         }
     }
 
-    // Fills the one login picked into the field's form; keypaste fills at once on a site it filled before, and otherwise asks.
+    // Fills the one login picked into the field's form, which keypaste releases at once.
     async pick(uuid) {
         const field = this.input;
         this.closeList();
