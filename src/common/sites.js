@@ -18,8 +18,11 @@ const PREDEFINED_SITELIST = [
     'https://home.personalcapital.com/*',
     'https://auth.services.adobe.com/*',
     'https://idmsa.apple.com/*',
+    'https://appleid.apple.com/*',
+    'https://account.apple.com/*',
     'https://secure.soundcloud.com/*',
     'https://icloud.com/*',
+    'https://www.icloud.com/*',
     'https://signin.benl.ebay.be/*',
     'https://signin.ebay.*/*',
     'https://www.ebay.*/signin/*',
@@ -122,6 +125,34 @@ kpxcSites.exceptionFound = function(identifier, field) {
     }
 
     return false;
+};
+
+/**
+ * Handles a few exceptions for certain sites where a one-time code field is not recognized by its words, as upstream's do.
+ * @param {object} field   Input field Element
+ * @returns {boolean}      True if the field is the site's one-time code field
+ */
+kpxcSites.totpExceptionFound = function(field) {
+    if (!field || !matchesWithNodeName(field, 'INPUT')) {
+        return false;
+    }
+
+    return document.location.href === 'https://twitter.com/i/flow/login'
+        && field.autocomplete === 'on' && field.dir === 'auto'
+        && field.name === 'text' && field.type === 'text';
+};
+
+// The longest a site's one-time code field may limit itself to, where a site asks for more than a code's digits.
+kpxcSites.expectedTOTPMaxLength = function() {
+    if (document.location.origin.startsWith('https://www.amazon')
+        && document.location.href.includes('/ap/mfa')) {
+        return 20;
+    } else if (document.location.origin.startsWith('https://adf.ly')
+        && document.location.href.includes('/index/twoFactorAuthentication')) {
+        return 30;
+    }
+
+    return MAX_TOTP_INPUT_LENGTH;
 };
 
 // Handles exceptions when returning or modifying existing combinations

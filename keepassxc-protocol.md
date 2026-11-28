@@ -520,7 +520,24 @@ Response (error, decrypted):
 
 keypaste's relay answers `get-logins` with names only, and two actions of its own fill the one login the person picked and bring keypaste forward. The relay sends the vault's owner each as a typed request, never this JSON, and only under the pairing the last `test-associate` proved.
 
+Every member below that the extension's first version, 1.0.0, did not send is optional, and each needs a feature keypaste offers. The answers to `associate` and `test-associate` carry them in `features`, those the vault's owner offers and the relay forwards:
+
+```json
+{
+    "features": [ "fill", "continued", "frames", "totp" ],
+    "hash": "<database hash>",
+    "id": "<pairing>",
+    "nonce": "<incremented nonce>",
+    "success": "true",
+    "version": "2.6.0"
+}
+```
+
+With no `features`, the extension does as 1.0.0 did: a pick fills both fields, every frame of another origin is refused, and no one-time code or continued fill is asked for. The relay refuses with error 6 any member whose feature the owner did not offer, so an older keypaste never releases more than it was asked for.
+
 `get-logins` is sent only when the person clicks keypaste's key icon, with the tab's address as the browser reports it. Its answer carries each matching login of every open vault with an empty `password`, the vault's name in `vault` while several vaults are open, the open vaults that are locked, the page's `site` and, for an `http` page, a single-label host or a form posting to another site, a `warning` the list shows before a pick. A list matching nothing is this answer with no entries, not error 15. Error 1 means no vault is unlocked.
+
+A frame whose origin is not the tab's sends its own address in `url` and the tab's in `topUrl`, both as the browser reports them, and only when keypaste offers `frames` and the frame is https and not sandboxed. keypaste lists only the frame's own logins, never the tab's. An https frame of the tab's own site, the same registrable domain and scheme, is answered as that site's page; one of another site only when keypaste trusts it: one of its own short list of known sign-in frames, such as Apple's `idmsa.apple.com` on iCloud's pages, or one the person trusted for this pairing, top site and frame site when keypaste asked them, which Settings can remove. The request waits while keypaste asks. Error 6 is keypaste's refusal of the frame.
 
 Response message data (success, decrypted):
 ```json
@@ -540,24 +557,33 @@ Response message data (success, decrypted):
 ```
 
 ### get-login (keypaste)
-Asks for the one login the person picked, which keypaste fills at once; error 6 is a refusal by keypaste's rules, and error 15 a login that does not match the page.
+Asks for the one login the person picked, which keypaste fills at once, or the next part of the tab's last fill; error 6 is a refusal by keypaste's rules, a login that does not match the page or a fill keypaste does not continue among them, error 15 a request naming no login, and error 1 a locked keypaste.
+
+- `fill` (feature `fill`) names what the page shows, so only that is released: `username` on a page showing a username and no password, where no password leaves keypaste; `password` on a page showing a password and no username; `both`, as a request without `fill` asks; and `totp` (feature `totp`) in a one-time code field, for the item's current code, which keypaste computes and whose seed it never sends.
+- `continued` (feature `continued`), `"true"`, asks for the next part of the tab's last fill with no list and no pick, `uuid` naming that fill's login. After each fill keypaste allows, for that pairing, one fill of each part not yet filled of the same login, within the seconds and on pages of the registrable domain the answer names, once; a new pick replaces it. The extension sends it only in the same tab, on a click on keypaste's key icon.
+- `topUrl` (feature `frames`), for a frame of another origin, as in `get-logins`.
 
 Unencrypted message:
 ```json
 {
     "action": "get-login",
-    "url": "<the tab's address>",
+    "url": "<the tab's address, or a frame's own>",
     "submitUrl": "<optional>",
     "uuid": "<the picked entry's uuid>",
+    "fill": "username",
+    "continued": "true",
+    "topUrl": "<the tab's address, for a frame of another origin>",
     "keys": [ { "id": "<pairing>", "key": "<identification public key>" } ]
 }
 ```
 
-Response message data (success, decrypted):
+Response message data (success, decrypted): `login` is empty unless the username was released, `password` unless the password was, and `totp` is there only for `fill` `totp`. `continueSite` is the registrable domain on whose pages the next click in this tab may continue the fill, and `continueSeconds` for how long, 120; they are empty and 0 when nothing is left to continue.
 ```json
 {
     "count": 1,
-    "entries": [ { "login": "maya@acme.dev", "name": "GitHub", "password": "<password>", "uuid": "0123456789abcdef0123456789abcdef" } ],
+    "entries": [ { "login": "maya@acme.dev", "name": "GitHub", "password": "", "uuid": "0123456789abcdef0123456789abcdef" } ],
+    "continueSite": "github.com",
+    "continueSeconds": 120,
     "id": "<pairing>",
     "nonce": "<incremented nonce>",
     "success": "true",

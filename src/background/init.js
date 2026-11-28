@@ -4,6 +4,17 @@ const contextMenuItems = [
     { title: tr('contextMenuFillUsernameAndPassword'), action: 'fill_username_password' }
 ];
 
+// Sends a keyboard shortcut the person pressed to every frame of the current tab; named so the real-browser test, which cannot
+// press a browser's own shortcut, runs it as the browser does.
+const runShortcut = async function(command) {
+    if (contextMenuItems.some(e => e.action === command)) {
+        const tab = await getCurrentTab();
+        if (tab?.id) {
+            browser.tabs.sendMessage(tab.id, { action: command });
+        }
+    }
+};
+
 const initListeners = async function() {
     // Clear credentials on reload so a new retrieval can be made
     browser.webNavigation.onCommitted.addListener(async (details) => {
@@ -12,15 +23,7 @@ const initListeners = async function() {
         }
     });
 
-    // Listen for keyboard shortcuts specified by user
-    browser.commands.onCommand.addListener(async (command) => {
-        if (contextMenuItems.some(e => e.action === command)) {
-            const tab = await getCurrentTab();
-            if (tab?.id) {
-                browser.tabs.sendMessage(tab.id, { action: command });
-            }
-        }
-    });
+    browser.commands.onCommand.addListener(runShortcut);
 
     browser.contextMenus.onClicked.addListener(async (item, tab) => {
         if (!tab?.id) {

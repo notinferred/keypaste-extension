@@ -6,6 +6,7 @@ const STATE_ROWS = {
     disconnected: { kind: 'status', icon: 'triangle-alert', text: tr('errorNotConnected'), button: tr('popupReloadButton'), act: 'retry' },
     refused: { kind: 'status', icon: 'triangle-alert', text: tr('loginListRefused'), button: tr('popupReloadButton'), act: 'retry' },
     frame: { kind: 'status', icon: 'info', text: tr('credentialsBlockedInIframe') },
+    'frame-refused': { kind: 'status', icon: 'info', text: tr('loginListFrameRefused') },
 };
 
 /**
@@ -114,7 +115,7 @@ class CredentialAutocomplete extends Autocomplete {
         this.closeList();
 
         const combination = await kpxcFields.getCombination(field);
-        await kpxcFill.fillPicked(combination, uuid);
+        await kpxcFill.fillPicked(combination, uuid, field);
         field?.focus();
     }
 }

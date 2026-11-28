@@ -197,6 +197,16 @@ test('Each state of the page\'s list says what is so and offers the way forward'
     }
 });
 
+test('A frame keypaste is never asked about, and one it refused, each say so with no way forward', async ({ page }) => {
+    for (const [ state, text ] of [
+        [ 'frame', 'credentialsBlockedInIframe' ],
+        [ 'frame-refused', 'loginListFrameRefused' ],
+    ]) {
+        const { rows } = await openList(page, { state });
+        expect(rows).toEqual([ [ message(text), null ] ]);
+    }
+});
+
 test('The page\'s list draws a warning as a row, no logins without the site again, and each login on its hue', async ({ page }) => {
     const warned = await openList(page, { state: 'unlocked', site: 'github.com', warning: 'This page\'s connection is not secure.', lockedVaults: [],
         entries: [ { name: 'GitHub', login: 'dan', uuid: '0123456789abcdef0123456789abcdef', vault: '' } ] });

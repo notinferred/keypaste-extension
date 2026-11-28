@@ -4,6 +4,8 @@ const keepass = {};
 keepass.associated = { 'value': false, 'hash': null };
 keepass.clientID = '';
 keepass.databaseHash = '';
+// What keypaste's owner advertised in its last answer to a pairing or its check; none behaves as 1.0.0 did.
+keepass.features = [];
 keepass.isConnected = false;
 keepass.isDatabaseClosed = true;
 keepass.isEncryptionKeyUnrecognized = false;
@@ -45,10 +47,15 @@ keepass.ask = async function(kpAction, tab, messageData, triggerUnlock = false) 
 // The names of a page's logins: keypaste sends each with an empty password, which never reaches the page.
 keepass.listLogins = async function(tab, args = []) {
     try {
-        const [ url, submitUrl ] = args;
+        const [ url, submitUrl, topUrl ] = args;
         const associated = await keepass.testAssociation(tab, [ false, false ]);
         if (!associated || !keepass.isConnected) {
             return { state: !keepass.isKeypasteAvailable ? 'disconnected' : keepass.isDatabaseClosed ? 'locked' : 'unpaired' };
+        }
+
+        // keypaste was updated or replaced since the frame's addresses were chosen: a frame of another origin is not asked about.
+        if (topUrl && !keepass.features.includes(Feature.FRAMES)) {
+            return { state: 'frame' };
         }
 
         keepass.clearErrorMessage(tab);
@@ -57,10 +64,17 @@ keepass.listLogins = async function(tab, args = []) {
         if (submitUrl) {
             messageData.submitUrl = submitUrl;
         }
+        if (topUrl) {
+            messageData.topUrl = topUrl;
+        }
 
         const { message, errorCode } = await keepass.ask(kpActions.GET_LOGINS, tab, messageData);
         if (!message) {
-            return { state: errorCode === String(kpErrors.DATABASE_NOT_OPENED) ? 'locked' : 'refused' };
+            if (errorCode === String(kpErrors.DATABASE_NOT_OPENED)) {
+                return { state: 'locked' };
+            }
+
+            return { state: topUrl && errorCode === String(kpErrors.ACTION_CANCELLED_OR_DENIED) ? 'frame-refused' : 'refused' };
         }
 
         keepass.updateLastUsed(keepass.databaseHash);
@@ -77,20 +91,51 @@ keepass.listLogins = async function(tab, args = []) {
     }
 };
 
-// The one login the person picked, which keypaste fills at once.
+/**
+ * The one login the person picked, which keypaste fills at once, or the next part of the fill it continues. Each member keypaste
+ * would not understand is left out, so an older keypaste is asked as 1.0.0 asked it.
+ * @param {object} tab      The tab
+ * @param {Array} args      [ url, submitUrl, uuid, { fill, continued, topUrl } ]
+ * @returns {object}        The login, with continueSite and continueSeconds; or { locked } when none was released
+ */
 keepass.getLogin = async function(tab, args = []) {
     try {
-        const [ url, submitUrl, uuid ] = args;
+        const [ url, submitUrl, uuid, { fill, continued = false, topUrl } = {} ] = args;
         const [ dbid ] = keepass.getCryptoKey();
         const messageData = { action: kpActions.GET_LOGIN, id: dbid, url: url, uuid: uuid, keys: keepass.getCryptoKeys() };
         if (submitUrl) {
             messageData.submitUrl = submitUrl;
         }
+        if (fill && keepass.features.includes(Feature.FILL) && (fill !== FillPart.TOTP || keepass.features.includes(Feature.TOTP))) {
+            messageData.fill = fill;
+        } else if (fill === FillPart.TOTP || continued) {
+            return {};
+        }
+        if (continued) {
+            if (!keepass.features.includes(Feature.CONTINUED)) {
+                return {};
+            }
+            messageData.continued = 'true';
+        }
+        if (topUrl) {
+            if (!keepass.features.includes(Feature.FRAMES)) {
+                return {};
+            }
+            messageData.topUrl = topUrl;
+        }
 
         const { message, errorCode } = await keepass.ask(kpActions.GET_LOGIN, tab, messageData);
         const entry = message?.entries?.[0];
         if (entry?.uuid === uuid) {
-            return { login: entry.login, password: entry.password, name: entry.name, uuid: entry.uuid };
+            return {
+                login: entry.login ?? '',
+                password: entry.password ?? '',
+                totp: typeof entry.totp === 'string' ? entry.totp : '',
+                name: entry.name,
+                uuid: entry.uuid,
+                continueSite: typeof message.continueSite === 'string' ? message.continueSite.toLowerCase() : '',
+                continueSeconds: Number(message.continueSeconds) || 0,
+            };
         }
 
         return { locked: errorCode === String(kpErrors.DATABASE_NOT_OPENED) };
@@ -156,6 +201,7 @@ keepass.associate = async function(tab) {
         const response = await keepassClient.sendMessage(kpAction, tab, messageData, nonce, false, true);
         if (response) {
             keepass.setCryptoKey(response.id, idKey);
+            keepass.features = featuresOf(response);
             keepass.associated.value = true;
             keepass.associated.hash = response.hash || 0;
 
@@ -211,6 +257,7 @@ keepass.testAssociation = async function(tab, args = []) {
         };
 
         const response = await keepassClient.sendMessage(kpAction, tab, messageData, nonce, enableTimeout);
+        keepass.features = featuresOf(response);
         if (!response) {
             const hash = response.hash || 0;
             keepass.deleteKey(hash);
@@ -228,6 +275,7 @@ keepass.testAssociation = async function(tab, args = []) {
         return keepass.isAssociated();
     } catch (err) {
         logError(`testAssociation failed: ${err}`);
+        keepass.features = [];
         return false;
     }
 };
@@ -507,6 +555,7 @@ keepass.getCryptoKeys = function() {
 
 keepass.reconnect = async function(tab = null, connectionTimeout = 1500) {
     keepassClient.connectToNative();
+    keepass.features = [];
 
     keepass.generateNewKeyPair();
     const keyChangeResult = await keepass
@@ -577,6 +626,7 @@ keepass.updatePopup = function() {
 keepass.updateDatabase = async function() {
     keepass.associated.value = false;
     keepass.associated.hash = null;
+    keepass.features = [];
     page.clearAllLogins();
 
     await keepass.testAssociation(null, [ true ]);
@@ -609,6 +659,12 @@ keepass.updateDatabaseHashToContent = async function() {
     } catch (err) {
         logError(`updateDatabaseHashToContent failed: ${err}`);
     }
+};
+
+// The features an answer advertises, each a string; an answer with none, or none at all, advertises nothing.
+const featuresOf = function(response) {
+    const features = response?.features;
+    return Array.isArray(features) ? features.filter(feature => typeof feature === 'string') : [];
 };
 
 const removeDuplicateEntries = function(arr) {

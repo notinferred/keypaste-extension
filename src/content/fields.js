@@ -28,6 +28,15 @@ kpxcFields.getAllCombinations = async function(inputs) {
 
             combinations.push(kpxcFields.getExistingCombination(combination));
             usernameField = null;
+        } else if (kpxc.features.includes(Feature.TOTP) && kpxcFields.isOneTimeCodeField(input)) {
+            // keypaste fills its one-time code, and never takes it for a username
+            combinations.push({
+                username: null,
+                password: null,
+                passwordInputs: [],
+                totp: input,
+                form: input.form
+            });
         } else if (input.getLowerCaseAttribute('autocomplete') === 'one-time-code') {
             // A one-time code is never a username
             continue;
@@ -145,6 +154,65 @@ kpxcFields.getCombination = async function(field, givenType) {
     }
 
     return undefined;
+};
+
+// Words in a field's id, name or placeholder that ask for a one-time code, as upstream's TOTP field detection reads them.
+const ONE_TIME_CODE_WORDS = [
+    '2fa',
+    '2fpin',
+    'auth',
+    'challenge',
+    'code',
+    'idvpin',
+    'mfa',
+    'mfacode',
+    'one_time_password',
+    'one-time password',
+    'otc-confirmation-input',
+    'otp',
+    'otppw',
+    'token',
+    'twofa',
+    'two-factor',
+    'twofactor',
+    'verification_pin',
+];
+const ONE_TIME_CODE_PARENTS = [ '.mfa-verify' ];
+const NOT_ONE_TIME_CODE = /(bank|bar|coupon|post(al)?|user|zip|promo).*code|(en|de)code(d|r)*|comment|author|error/i;
+const NOT_ONE_TIME_CODE_WORDS = [ 'email', 'username' ];
+const ONE_TIME_CODE_TYPES = [ 'number', 'password', 'tel', 'text' ];
+
+// Whether a field asks for a one-time code: autocomplete=one-time-code always does; otherwise its id, name or placeholder says so and its shape fits.
+kpxcFields.isOneTimeCodeField = function(field) {
+    if (!field || !matchesWithNodeName(field, 'INPUT')) {
+        return false;
+    }
+
+    if (field.getLowerCaseAttribute('autocomplete') === 'one-time-code') {
+        return true;
+    }
+
+    const id = field.getLowerCaseAttribute('id');
+    const name = field.getLowerCaseAttribute('name');
+    const placeholder = field.getLowerCaseAttribute('placeholder');
+    const says = (word) => id?.includes(word) || name?.includes(word) || placeholder?.includes(word);
+    const named = ONE_TIME_CODE_WORDS.some(says) || ONE_TIME_CODE_PARENTS.some(parent => field.closest(parent));
+    if (!ONE_TIME_CODE_TYPES.includes(field.getLowerCaseAttribute('type') ?? 'text')
+        || (!named && !kpxcSites.totpExceptionFound(field))
+        || NOT_ONE_TIME_CODE_WORDS.some(says)) {
+        return false;
+    }
+
+    return !(NOT_ONE_TIME_CODE_WORDS.includes(field.type)
+        || field.offsetWidth < MIN_INPUT_FIELD_OFFSET_WIDTH
+        || field.size < 2
+        || (field.maxLength > 0 && (field.maxLength < MIN_TOTP_INPUT_LENGTH || field.maxLength > kpxcSites.expectedTOTPMaxLength()))
+        || NOT_ONE_TIME_CODE_WORDS.includes(field.autocomplete)
+        || NOT_ONE_TIME_CODE.test(field.id)
+        || NOT_ONE_TIME_CODE.test(field.name)
+        || NOT_ONE_TIME_CODE.test(field.placeholder)
+        || field.readOnly
+        || field.inputMode === 'email');
 };
 
 // Check for new password via autocomplete attribute

@@ -6,20 +6,57 @@
  */
 const kpxcFill = {};
 
+// What a field's form shows, and so what a pick there asks keypaste to release: the one-time code in its field, otherwise the visible fields.
+kpxcFill.partFor = function(combination, field) {
+    if (combination?.totp && (!field || combination.totp === field)) {
+        return FillPart.TOTP;
+    }
+
+    const shown = (input) => Boolean(input) && kpxcFields.isVisible(input);
+    return fillFor(shown(combination?.username), shown(combination?.password));
+};
+
 // The one login the person picked, asked of keypaste for the tab's address and filled into the field's form; nothing is kept.
-kpxcFill.fillPicked = async function(combination, uuid) {
+kpxcFill.fillPicked = async function(combination, uuid, field) {
     if (!combination || !uuid) {
         return;
     }
 
-    const login = await sendMessage('fill_login', [ uuid, kpxc.submitUrl ]);
+    const part = kpxcFill.partFor(combination, field);
+    const login = await sendMessage('fill_login', [ uuid, kpxc.submitUrl, part ]);
     if (login?.uuid !== uuid) {
-        kpxcUI.createNotification('warning', tr(login?.locked ? 'loginListKeypasteLocked' : 'loginListNotFilled'));
+        const words = login?.locked ? 'loginListKeypasteLocked' : part === FillPart.TOTP ? 'loginListCodeNotFilled' : 'loginListNotFilled';
+        kpxcUI.createNotification('warning', tr(words));
         return;
     }
 
     await sendMessage('page_set_login_id', uuid);
     await kpxcFill.fillLogin(combination, login);
+};
+
+/**
+ * Fills the next part of the tab's last fill into the clicked field, with no list and no pick, when keypaste continues it here.
+ * @param {HTMLElement} field   The field whose key icon was clicked
+ * @returns {boolean}           Whether it filled; otherwise the list opens as usual
+ */
+kpxcFill.fillContinued = async function(field) {
+    if (!kpxc.features.includes(Feature.CONTINUED)) {
+        return false;
+    }
+
+    const combination = await kpxcFields.getCombination(field);
+    const part = combination?.totp === field ? FillPart.TOTP : combination?.password === field ? FillPart.PASSWORD : undefined;
+    if (!part) {
+        return false;
+    }
+
+    const login = await sendMessage('continue_login', [ part, kpxc.getFormActionUrl(combination) ]);
+    if (!login?.uuid) {
+        return false;
+    }
+
+    await kpxcFill.fillLogin(combination, login);
+    return true;
 };
 
 // Picked in the toolbar's login popup, the extension's own page
@@ -40,11 +77,20 @@ kpxcFill.fillFromPopup = async function(uuid) {
 kpxcFill.fillLogin = async function(combination, login) {
     const usernameValue = login.login;
 
+    // A one-time code goes only into its own field; keypaste releases nothing else with it.
+    if (login.totp) {
+        if (combination.totp) {
+            await kpxcFill.setValueWithChange(combination.totp, login.totp);
+        }
+        kpxcUserAutocomplete.closeList();
+        return;
+    }
+
     // Additional checks
     checkIdenticalPasswordFields(combination);
     checkReadOnlyUsernameField(combination);
 
-    if (combination.password && matchesWithNodeName(combination.password, 'INPUT')) {
+    if (combination.password && login.password && matchesWithNodeName(combination.password, 'INPUT')) {
         // Show a notification if password length exceeds the length defined in input
         if (combination.password.maxLength
             && combination.password.maxLength > 0

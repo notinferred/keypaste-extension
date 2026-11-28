@@ -7,7 +7,12 @@
 // page's fields and the owner's log must show what keypaste's rules allow: the list written as one line and no password before
 // a pick, and a pick filled at once with no prompt and its fill recorded with the page's origin, on the item's site at the first
 // visit and again, on a subdomain, on an http page and on a form posting elsewhere; a lookalike and another tenant of a shared
-// host listing nothing; and a cross-origin frame refused by the extension itself.
+// host listing nothing; the fill shortcut with no field focused opening the list in the username, in the Chromium family,
+// whose extension worker can run it; a sign-in split across pages, the username's page releasing no password and the password's page
+// filled by the next click with no list; a one-time code filled after its login, by that click and by a pick; a frame from
+// another site filled only with its own site's login once the person trusts it in keypaste, asked again once Settings removes
+// that trust, and refused when they don't; a frame of the page's own site filled as the page is, with no question; and a
+// sandboxed frame refused by the extension itself.
 //
 // Usage: fill-in-browsers.js <settings.json>, written by verify-browser-fill.sh:
 //   { root, driver, keypaste, vault, real, geckodriver, cert, key, chromiumBuild, edgeBuild, firefoxBuild, chromeId, edgeId,
@@ -24,7 +29,7 @@ const os = require('node:os');
 const path = require('node:path');
 const readline = require('node:readline');
 const { chromium } = require('@playwright/test');
-const { ELEMENT, FIREFOX_ID, STATUS_ACTION, escape, pause, readOr, listOr, report, statusOr, withinWait, until, freePort,
+const { WAIT_MS, ELEMENT, FIREFOX_ID, STATUS_ACTION, escape, pause, readOr, listOr, report, statusOr, withinWait, until, freePort,
     HeldApp, pair, Gecko } = require('./browsers');
 
 const settings = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -140,6 +145,19 @@ const form = (action) => `<form method="post" action="${action}">
 <input id="password" name="password" type="password" autocomplete="current-password" style="${field}">
 <button type="submit" style="margin:12px">Sign in</button>
 </form>`;
+const onlyUsername = `<form method="post" action="/next">
+<input id="username" name="username" autocomplete="username" style="${field}">
+<button type="submit" style="margin:12px">Next</button>
+</form>`;
+const onlyPassword = `<form method="post" action="/session">
+<input id="password" name="password" type="password" autocomplete="current-password" style="${field}">
+<button type="submit" style="margin:12px">Sign in</button>
+</form>`;
+const oneTimeCode = `<form method="post" action="/verify">
+<input id="code" name="code" autocomplete="one-time-code" inputmode="numeric" style="${field}">
+<button type="submit" style="margin:12px">Verify</button>
+</form>`;
+const frameOf = (src, sandbox = '') => `<iframe id="frame" ${sandbox} src="${src}" style="width:400px;height:240px;border:0"></iframe>`;
 const pageOf = (title, body) => `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="margin:0">${body}</body></html>`;
 
 // The forms the pages posted, which a fill never does.
@@ -153,8 +171,18 @@ const serve = function(port, httpsPort) {
             body = pageOf('Sign in', form('/session'));
         } else if (url.pathname === '/cross') {
             body = pageOf('Sign in', form(`https://${NAMES.other}:${httpsPort}/session`));
+        } else if (url.pathname === '/username') {
+            body = pageOf('Sign in', onlyUsername);
+        } else if (url.pathname === '/password') {
+            body = pageOf('Sign in', onlyPassword);
+        } else if (url.pathname === '/otp') {
+            body = pageOf('Verify', oneTimeCode);
         } else if (url.pathname === '/framed') {
-            body = pageOf('Framed', `<iframe id="frame" src="https://${NAMES.frame}:${httpsPort}/login?next=/frame" style="width:400px;height:240px;border:0"></iframe>`);
+            body = pageOf('Framed', frameOf(`https://${NAMES.frame}:${httpsPort}/login?next=/frame`));
+        } else if (url.pathname === '/framed-other') {
+            body = pageOf('Framed', frameOf(`https://${NAMES.other}:${httpsPort}/login?next=/frame`));
+        } else if (url.pathname === '/sandboxed') {
+            body = pageOf('Framed', frameOf(`https://${NAMES.shop}:${httpsPort}/login?next=/frame`, 'sandbox="allow-scripts allow-forms"'));
         } else {
             if (request.method === 'POST') {
                 submitted.push(`${request.headers.host}${url.pathname}`);
@@ -185,7 +213,30 @@ const logins = (ports) => [
     { title: 'Mail', username: 'dana', password: `mail-dana-${crypto.randomUUID()}`, url: `https://${NAMES.mail}:${ports.httpsPort}` },
     { title: 'Pages', username: 'alice', password: `pages-alice-${crypto.randomUUID()}`, url: `https://${NAMES.alice}:${ports.httpsPort}` },
     { title: 'Router', username: 'admin', password: `router-admin-${crypto.randomUUID()}`, url: `http://${NAMES.router}:${ports.httpPort}` },
+    { title: 'Pay', username: 'pat', password: `pay-pat-${crypto.randomUUID()}`, url: `https://${NAMES.other}:${ports.httpsPort}` },
 ];
+
+// Mail's one-time code: a TOTP seed in KeePassXC's otp field, which keypaste turns into a code and never sends.
+const MAIL_SEED = 'JBSWY3DPEHPK3PXP';
+const MAIL_OTP = `otpauth://totp/Mail:dana?secret=${MAIL_SEED}&issuer=Mail&period=30&digits=6&algorithm=SHA1`;
+
+// RFC 6238's code for a base32 seed at a time step, as keypaste computes it.
+const totpAt = function(seed, step) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const bits = [ ...seed ].map((c) => alphabet.indexOf(c).toString(2).padStart(5, '0')).join('');
+    const key = Buffer.from(bits.match(/.{8}/g).map((byte) => parseInt(byte, 2)));
+    const counter = Buffer.alloc(8);
+    counter.writeBigUInt64BE(BigInt(step));
+    const mac = crypto.createHmac('sha1', key).update(counter).digest();
+    const offset = mac[mac.length - 1] & 0x0f;
+    return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0');
+};
+
+// The codes that are current around now, one step either side, since the fill and the check fall in different moments.
+const currentCodes = function(seed) {
+    const step = Math.floor(Date.now() / 30000);
+    return [ step - 1, step, step + 1 ].map((at) => totpAt(seed, at));
+};
 
 const addLogins = function(items) {
     for (const item of items) {
@@ -198,6 +249,16 @@ const addLogins = function(items) {
             throw new Error(`keypaste add ${item.title} exited ${added.status}: ${added.stderr}`);
         }
     }
+
+    // keypaste leaves KeePassXC's otp field to its own one-time-code setup, which the driver does as the item pane does.
+    const otp = spawnSync(driver, [ 'totp', vault, '', 'Mail' ], {
+        env: { ...inherited, HOME: home, KEYPASTE_HOME: keypasteHome, KEYPASTE_DRIVER_PASSWORD: master },
+        input: `${MAIL_OTP}\n`,
+        encoding: 'utf8',
+    });
+    if (otp.status !== 0) {
+        throw new Error(`the driver's totp for Mail exited ${otp.status}: ${otp.stderr}`);
+    }
 };
 
 // What the page shows: its fields' values, and how many of the extension's own elements sit in its body, where the pages put
@@ -206,10 +267,12 @@ const addLogins = function(items) {
 const PAGE_STATE = `
     const value = (id) => document.getElementById(id)?.value ?? null;
     const ours = [ ...document.body.children ].filter((element) => element.tagName === 'DIV');
-    const rect = document.getElementById('username')?.getBoundingClientRect();
+    const rect = (document.getElementById('username') ?? document.getElementById('password') ?? document.getElementById('code'))?.getBoundingClientRect();
     return {
         username: value('username'),
         password: value('password'),
+        code: value('code'),
+        focused: document.activeElement?.id ?? '',
         icons: ours.filter((element) => element.style.cssText === 'all: unset;').length,
         notices: ours.filter((element) => element.style.display === 'block').length,
         divs: ours.length,
@@ -305,8 +368,24 @@ const launchChromiumFamily = async function(browser, log, spki) {
 
 // A page of a Chromium-family browser, through Playwright.
 class ChromiumTab {
-    constructor(page) {
+    constructor(page, extensionId) {
         this.page = page;
+        this.extensionId = extensionId;
+    }
+
+    // No automation presses a browser's own shortcut, so the extension's worker runs its handler of one as the browser does.
+    async shortcut(command) {
+        const worker = this.page.context().serviceWorkers().find((w) => w.url().startsWith(`chrome-extension://${this.extensionId}/`));
+        if (!worker) {
+            throw new Error(`the worker of the extension ${this.extensionId} is not running`);
+        }
+        // The handler sends the shortcut to the current tab, which the browser started with beside this one.
+        await this.page.bringToFront();
+        const current = await worker.evaluate('getCurrentTab().then((tab) => tab?.url ?? \'\')');
+        if (current !== this.page.url()) {
+            throw new Error(`the extension's current tab is ${current || 'none'}, not ${this.page.url()}`);
+        }
+        await worker.evaluate(`runShortcut(${JSON.stringify(command)})`);
     }
 
     async goto(url) {
@@ -329,17 +408,32 @@ class ChromiumTab {
         return state;
     }
 
-    async clickAt({ x, y }) {
-        await this.page.mouse.click(x, y);
+    // A click at a point of the page, or, framed, through the frame's own locator at the point within it, so it lands in the
+    // frame however the browser runs it.
+    async clickAt({ x, y }, framed = false) {
+        if (!framed) {
+            await this.page.mouse.click(x, y);
+            return;
+        }
+        const box = await (await this.page.$('#frame')).boundingBox();
+        await this.page.frameLocator('#frame').locator('html').click({ position: { x: x - box.x, y: y - box.y }, force: true });
     }
 
-    async press(key) {
+    // A trusted key press to whatever has focus; the browser routes it into a frame that holds the focus.
+    async press(key, _framed = false) {
         await this.page.keyboard.press(key);
     }
 
     // What the page's own document has at a point: a shadow root the extension draws in shows as its host.
-    at({ x, y }) {
-        return this.page.evaluate(`document.elementFromPoint(${x}, ${y})?.tagName ?? ''`);
+    at({ x, y }, framed = false) {
+        if (!framed) {
+            return this.page.evaluate(`document.elementFromPoint(${x}, ${y})?.tagName ?? ''`);
+        }
+        return (async () => {
+            const element = await this.page.$('#frame');
+            const box = await element.boundingBox();
+            return (await element.contentFrame()).evaluate(`document.elementFromPoint(${x - box.x}, ${y - box.y})?.tagName ?? ''`);
+        })();
     }
 
 }
@@ -349,6 +443,9 @@ class FirefoxTab {
     constructor(gecko) {
         this.gecko = gecko;
     }
+
+    // geckodriver reaches neither the browser's shortcuts nor the add-on's background page.
+    shortcut = undefined;
 
     async goto(url) {
         await this.gecko.session('POST', '/url', { url });
@@ -377,16 +474,51 @@ class FirefoxTab {
         }
     }
 
-    async clickAt({ x, y }) {
-        await this.gecko.clickAt(x, y);
+    // Framed, the click is sent in the frame's own browsing context, at the point within it, so it reaches a frame Firefox runs
+    // in another process; from the top document's it reached a frame of the page's site but not one of another site.
+    async clickAt({ x, y }, framed = false) {
+        if (!framed) {
+            await this.gecko.clickAt(x, y);
+            return;
+        }
+        const frame = await this.gecko.element('#frame');
+        const box = await this.gecko.session('GET', `/element/${frame}/rect`);
+        await this.gecko.session('POST', '/frame', { id: { [ELEMENT]: frame } });
+        try {
+            await this.gecko.clickAt(x - box.x, y - box.y);
+        } finally {
+            await this.gecko.session('POST', '/frame/parent', {});
+        }
     }
 
-    async press(key) {
-        await this.gecko.press(key);
+    // Framed, the press is sent in the frame's own browsing context, as a framed click is, so it reaches the field focused in a
+    // frame Firefox runs in another process.
+    async press(key, framed = false) {
+        if (!framed) {
+            await this.gecko.press(key);
+            return;
+        }
+        const frame = await this.gecko.element('#frame');
+        await this.gecko.session('POST', '/frame', { id: { [ELEMENT]: frame } });
+        try {
+            await this.gecko.press(key);
+        } finally {
+            await this.gecko.session('POST', '/frame/parent', {});
+        }
     }
 
-    at({ x, y }) {
-        return this.gecko.evaluate(`return document.elementFromPoint(${x}, ${y})?.tagName ?? '';`);
+    async at({ x, y }, framed = false) {
+        if (!framed) {
+            return this.gecko.evaluate(`return document.elementFromPoint(${x}, ${y})?.tagName ?? '';`);
+        }
+        const frame = await this.gecko.element('#frame');
+        const box = await this.gecko.session('GET', `/element/${frame}/rect`);
+        await this.gecko.session('POST', '/frame', { id: { [ELEMENT]: frame } });
+        try {
+            return await this.gecko.evaluate(`return document.elementFromPoint(${x - box.x}, ${y - box.y})?.tagName ?? '';`);
+        } finally {
+            await this.gecko.session('POST', '/frame/parent', {});
+        }
     }
 
 }
@@ -396,29 +528,29 @@ const auditText = () => readOr(auditLog);
 
 // The acts every browser performs, on one pairing of its own.
 const fillActs = async function(app, tab, ports, items, name) {
-    const [ shopDana, shopSam, mail, , router ] = items;
+    const [ shopDana, shopSam, mail, , router, pay ] = items;
     const at = (host, pagePath, port = ports.httpsPort, scheme = 'https') => `${scheme}://${host}:${port}${pagePath}`;
     const origin = (host, port = ports.httpsPort, scheme = 'https') => `${scheme}://${host}:${port}`;
 
-    // The page's fields have their icon once the extension has read the page, and on the page itself the icon is under the
-    // point a click aims at; a frame's document is not the page's, so there the icon's wrapper alone is waited for.
+    // The page's fields have their icon once the extension has read the page, and only once it is placed is it under the point a
+    // click aims at, in the frame's own document for a framed field; a click before then, as just after a reload, lands on nothing.
     const ready = (framed = false) => until(async () => {
         const state = await tab.state(framed);
         if (!state.field || state.icons === 0) {
             return undefined;
         }
-        return framed || (await tab.at(iconPoint(state.field))).startsWith('DIV') ? state : undefined;
-    }, `${name} to draw keypaste's icon`);
+        return (await tab.at(iconPoint(state.field), framed)).startsWith('DIV') ? state : undefined;
+    }, `${name} to draw and place keypaste's icon`);
 
     // A click on the icon opens keypaste's list beside the field, a div more in the page, and writes one line when it names a
     // login. Brave has let a first click on a page just opened do nothing (BACKLOG), so one more click is allowed and printed.
     const opened = async (framed = false) => {
         const before = (await ready(framed)).divs;
         const point = iconPoint((await ready(framed)).field);
-        await tab.clickAt(point);
+        await tab.clickAt(point, framed);
         await until(async () => (await tab.state(framed)).divs > before || undefined, `${name} to open keypaste's list`, QUIET_MS * 2).catch(async () => {
             console.log(`${name}: a click brought no list; clicking again`);
-            await tab.clickAt(point);
+            await tab.clickAt(point, framed);
             await until(async () => (await tab.state(framed)).divs > before || undefined, `${name} to open keypaste's list`);
         });
     };
@@ -429,44 +561,141 @@ const fillActs = async function(app, tab, ports, items, name) {
         return lines.find((line) => line.includes(`listed ${count} login(s) by name, no password`));
     }, `${name}'s list of ${count} login(s) on ${expectedOrigin} to be recorded`);
 
+    // The fill shortcut with no field focused opens keypaste's list in the page's first login field, which it focuses, as the
+    // field's key icon opens it.
+    const openedByShortcut = (fieldId) => async () => {
+        const before = await ready();
+        if (before.focused !== '') {
+            throw new Error(`${name}: ${before.focused} had the focus before the fill shortcut`);
+        }
+        await tab.shortcut('fill_username_password');
+        const shown = await until(async () => {
+            const state = await tab.state();
+            return state.divs > before.divs ? state : undefined;
+        }, `${name} to open keypaste's list from the fill shortcut`);
+        if (shown.focused !== fieldId) {
+            throw new Error(`${name}: the fill shortcut focused ${shown.focused || 'nothing'}, not ${fieldId}`);
+        }
+    };
+
     // Opens the list on the page, waits for its line, and picks the login at row (from 1) with the keys, focus being in the field.
-    const pickRow = async (expectedOrigin, count, row) => {
+    const pickRow = async (expectedOrigin, count, row, framed = false, open = opened) => {
         const since = auditText().length;
-        await opened();
+        await open(framed);
         await listed(expectedOrigin, count, since);
         // A pick counts only once the list has been on screen a moment (autocomplete.js).
         await pause(800);
         for (let i = 1; i < row; i++) {
-            await tab.press('ArrowDown');
+            await tab.press('ArrowDown', framed);
         }
-        await tab.press('Enter');
+        await tab.press('Enter', framed);
     };
 
+    // The page's fields hold the item's username and password, or only those of the two the page has.
     const filledWith = (item, framed = false) => {
         let seen;
         return until(async () => {
             seen = await tab.state(framed);
-            return seen.username === item.username && seen.password === item.password ? seen : undefined;
+            const username = seen.username === null || seen.username === item.username;
+            const password = seen.password === null || seen.password === item.password;
+            return username && password && (seen.username ?? seen.password) !== null ? seen : undefined;
         }, `${name} to fill ${item.title}`).catch((error) => {
             throw new Error(`${error.message}; the page showed ${seen?.username} with ${seen?.password ? 'a password' : 'no password'}, `
                 + `forms posted: ${submitted.join(', ') || 'none'}`);
         });
     };
 
+    // The owner's granted fill lines since a point, by how they were decided.
+    const fillLines = (since, method) => auditText().slice(since).split('\n')
+        .filter((line) => line.includes('"field":"fill"') && line.includes('"decision":"granted"') && line.includes(`"method":"${method}"`));
+
     // A pick keypaste fills at once, asking nobody, its fill recorded in the owner's log with the page's origin.
-    const atOnce = async (expectedOrigin, count, row, item) => {
+    const atOnce = async (expectedOrigin, count, row, item, framed = false, open = opened) => {
         const prompts = app.watch(PROMPT);
         const since = auditText().length;
-        await pickRow(expectedOrigin, count, row);
-        await filledWith(item);
+        await pickRow(expectedOrigin, count, row, framed, open);
+        await filledWith(item, framed);
         prompts.stop();
         if (prompts.lines.length > 0) {
             throw new Error(`${name}: a pick of ${item.title} on ${expectedOrigin} brought a prompt: ${prompts.lines[0]}`);
         }
-        const fills = auditText().slice(since).split('\n').filter((line) => line.includes('"field":"fill"') && line.includes('"decision":"granted"'));
-        if (!fills.some((line) => line.includes(`on ${expectedOrigin}`))) {
+        if (!fillLines(since, 'picked').some((line) => line.includes(`on ${expectedOrigin}`))) {
             throw new Error(`${name}: the owner's log names no fill of ${item.title} on ${expectedOrigin}`);
         }
+    };
+
+    // A click on the key icon that continues the tab's last fill: the field fills with no list and no prompt, and the owner
+    // records a continued fill, never a list, on the page's origin.
+    const continued = async (expectedOrigin, what, holds) => {
+        const prompts = app.watch(PROMPT);
+        const since = auditText().length;
+        const state = await ready();
+        await tab.clickAt(iconPoint(state.field));
+        let seen;
+        await until(async () => {
+            seen = await tab.state();
+            return holds(seen) || undefined;
+        }, `${name} to fill ${what} with no list`).catch((error) => {
+            throw new Error(`${error.message}; the page showed ${JSON.stringify({ ...seen, password: seen?.password ? '(a password)' : seen?.password })}`);
+        });
+        prompts.stop();
+        if (prompts.lines.length > 0) {
+            throw new Error(`${name}: the continued fill of ${what} brought a prompt: ${prompts.lines[0]}`);
+        }
+        if ((await tab.state()).divs > state.divs) {
+            throw new Error(`${name}: the continued fill of ${what} opened keypaste's list`);
+        }
+        const recorded = auditText().slice(since).split('\n');
+        if (recorded.some((line) => line.includes('"field":"list"'))) {
+            throw new Error(`${name}: the continued fill of ${what} listed logins`);
+        }
+        if (!fillLines(since, 'continued').some((line) => line.includes(`on ${expectedOrigin}`))) {
+            throw new Error(`${name}: the owner's log names no continued fill of ${what} on ${expectedOrigin}`);
+        }
+    };
+
+    // A frame the person refuses to trust when keypaste asks: its list opens with no login, nothing is filled, and nothing is listed.
+    const refusedFrame = async (topHost, frameHost) => {
+        const since = auditText().length;
+        const before = (await ready(true)).divs;
+        await askedToTrust(topHost, frameHost, 'deny');
+        await until(async () => (await tab.state(true)).divs > before || undefined, `${name} to open keypaste's list in the refused frame`);
+        await pause(1000);
+        await tab.press('Enter', true);
+        await pause(1000);
+        if (auditText().slice(since).split('\n').some((line) => line.includes('"field":"list"') || (line.includes('"field":"fill"') && line.includes('"decision":"granted"')))) {
+            throw new Error(`${name}: the refused frame from ${frameHost} listed or filled a login`);
+        }
+        const state = await tab.state(true);
+        if (state.username || state.password) {
+            throw new Error(`${name}: the refused frame from ${frameHost} was filled with ${state.username}`);
+        }
+    };
+
+    const holdsCode = (seed) => (state) => currentCodes(seed).includes(state.code);
+
+    // A click in a frame keypaste asks the person about: the trust question names the tab's host and the frame's, and is answered.
+    const askedToTrust = async (topHost, frameHost, answer) => {
+        const before = (await ready(true)).divs;
+        const asked = app.next(/^frame-prompt /, WAIT_MS).catch(async (error) => {
+            // Whether the click opened keypaste's list in the frame tells a click that never arrived from a frame the extension refused.
+            const after = await tab.state(true).catch(() => undefined);
+            throw new Error(`${error.message}; the frame then held ${after?.divs ?? 'unknown'} of the extension's elements against ${before} before the click`);
+        });
+        const point = iconPoint((await ready(true)).field);
+        await tab.clickAt(point, true);
+        // Brave has let a first click on a page just opened do nothing (BACKLOG), so one more click is allowed and printed.
+        const shown = await Promise.race([ asked, pause(QUIET_MS * 2).then(() => undefined) ]) ?? await (async () => {
+            console.log(`${name}: a click asked nothing; clicking again`);
+            await tab.clickAt(point, true);
+            return asked;
+        })();
+        const match = /^frame-prompt pairing=(.+) top=(\S+) frame=(\S+)$/.exec(shown);
+        if (!match || match[2] !== topHost || match[3] !== frameHost) {
+            throw new Error(`${name}: keypaste asked ${shown}, not about ${frameHost} on ${topHost}`);
+        }
+        app.send(answer);
+        return match[1];
     };
 
     // A click that lists nothing: the list opens, keypaste records no list line for the host and asks nobody, and the fields stay empty.
@@ -475,7 +704,7 @@ const fillActs = async function(app, tab, ports, items, name) {
         const since = auditText().length;
         await opened(framed);
         await pause(1000);
-        await tab.press('Enter');
+        await tab.press('Enter', framed);
         await pause(1000);
         prompts.stop();
         if (prompts.lines.length > 0) {
@@ -506,6 +735,14 @@ const fillActs = async function(app, tab, ports, items, name) {
     await tab.goto(at(NAMES.bob, '/login'));
     await nothingListed('another tenant of github.io', NAMES.bob);
 
+    // The fill shortcut with no field focused opens the list in the username, and a pick there fills at once.
+    if (tab.shortcut) {
+        await tab.goto(at(NAMES.shop, '/login'));
+        await atOnce(origin(NAMES.shop), 2, 1, shopDana, false, openedByShortcut('username'));
+    } else {
+        console.log(`${name}: the fill shortcut is not run, as nothing here reaches the browser's own shortcuts`);
+    }
+
     // An http page, and a form that posts to another site, which the list warns of, fill at once at the person's pick.
     await tab.goto(at(NAMES.router, '/login', ports.httpPort, 'http'));
     await atOnce(origin(NAMES.router, ports.httpPort, 'http'), 1, 1, router);
@@ -518,12 +755,60 @@ const fillActs = async function(app, tab, ports, items, name) {
     await tab.reload();
     await atOnce(origin(NAMES.mail), 1, 1, mail);
 
-    // A login form in a frame from another origin, even of the item's own site, is refused by the extension before keypaste.
-    const before = auditText();
+    // Mail's one-time code fills after its login by the next click in the code's field, with no list, and later at a pick there.
+    await tab.goto(at(NAMES.mail, '/otp'));
+    await continued(origin(NAMES.mail), 'Mail\'s one-time code', holdsCode(MAIL_SEED));
+    await tab.reload();
+    await pickRow(origin(NAMES.mail), 1, 1);
+    await until(async () => holdsCode(MAIL_SEED)(await tab.state()) || undefined, `${name} to fill Mail's one-time code at a pick`);
+
+    // A sign-in split across pages: the username's page gets only the username, so no password leaves keypaste, and the next
+    // click on the password's page fills the password with no list and no second pick; keypaste continues only what was left.
+    await tab.goto(at(NAMES.shop, '/username'));
+    await atOnce(origin(NAMES.shop), 2, 2, { ...shopSam, password: null });
+    await tab.goto(at(NAMES.shop, '/password'));
+    await continued(origin(NAMES.shop), 'Shop work\'s password', (state) => state.password === shopSam.password);
+
+    // A frame from another site lists only its own site's logins, never the tab's, once the person trusts it in keypaste: the
+    // first click asks, the pick fills the frame's login, and the next visit fills at once, asking nobody.
+    await tab.goto(at(NAMES.shop, '/framed-other'));
+    let since = auditText().length;
+    const closed = (await ready(true)).divs;
+    const pairing = await askedToTrust(NAMES.shop, NAMES.other, 'allow');
+    await until(async () => (await tab.state(true)).divs > closed || undefined, `${name} to open keypaste's list in the trusted frame`);
+    await listed(origin(NAMES.other), 1, since);
+    await pause(800);
+    await tab.press('Enter', true);
+    await filledWith(pay, true);
+    // keypaste's line names the page the frame is in after the frame's own origin, so only a list of the page itself is a leak.
+    if (auditText().slice(since).split('\n').some((line) => line.includes('"field":"list"') && line.includes(`no password, on ${origin(NAMES.shop)}`))) {
+        throw new Error(`${name}: the frame from ${NAMES.other} listed ${NAMES.shop}'s logins`);
+    }
+    await tab.reload();
+    await atOnce(origin(NAMES.other), 1, 1, pay, true);
+    const trusted = await app.act('frames', new RegExp(`^frame pairing=${escape(pairing)} top=${escape(NAMES.shop)} frame=${escape(NAMES.other)}$|^frames none$`));
+    if (trusted === 'frames none') {
+        throw new Error(`${name}: Settings lists no trust of ${NAMES.other} on ${NAMES.shop}`);
+    }
+
+    // Removed in Settings, the trust is asked for again; refused, the frame gets nothing.
+    const removed = await app.act(`distrust ${NAMES.shop} ${NAMES.other}`, /^(not )?distrusted\b/);
+    if (removed !== `distrusted ${NAMES.shop} ${NAMES.other}`) {
+        throw new Error(`${name}: Settings did not remove the trust: ${removed}`);
+    }
+    await tab.reload();
+    await refusedFrame(NAMES.shop, NAMES.other);
+
+    // A frame of the page's own site fills as the page does, with its own logins and no question.
     await tab.goto(at(NAMES.shop, '/framed'));
-    await nothingListed('a cross-origin frame', NAMES.frame, true);
-    if (auditText().slice(before.length).includes(NAMES.frame)) {
-        throw new Error(`${name}: the cross-origin frame reached keypaste`);
+    await atOnce(origin(NAMES.frame), 2, 1, shopDana, true);
+
+    // A sandboxed frame, even of the tab's own address, is refused by the extension before keypaste is asked.
+    since = auditText().length;
+    await tab.goto(at(NAMES.shop, '/sandboxed'));
+    await nothingListed('a sandboxed frame', NAMES.shop, true);
+    if (auditText().slice(since).split('\n').some((line) => line.includes('"tool":"browser"') && !line.includes('"field":"check"'))) {
+        throw new Error(`${name}: the sandboxed frame reached keypaste`);
     }
 };
 
@@ -534,12 +819,19 @@ const requireAudit = function(items, ports) {
             throw new Error(`the owner's log holds ${item.title}'s password`);
         }
     }
-    for (const leak of [ 'next=', '/login', '/account', '/cross' ]) {
-        if (log.includes(leak)) {
+    if (log.includes('next=')) {
+        throw new Error('the owner\'s log holds a page\'s path or query: next=');
+    }
+    // A path follows a host or port, never a scheme's "//", so an origin such as https://login.shop.test is not taken for one.
+    for (const leak of [ '/login', '/account', '/cross' ]) {
+        if (new RegExp(`[^/]${leak}`).test(log)) {
             throw new Error(`the owner's log holds a page's path or query: ${leak}`);
         }
     }
-    for (const expected of [ `https://${NAMES.shop}:${ports.httpsPort}`, `http://${NAMES.router}:${ports.httpPort}`, `https://${NAMES.mail}:${ports.httpsPort}` ]) {
+    if (log.includes(MAIL_SEED)) {
+        throw new Error('the owner\'s log holds Mail\'s one-time code seed');
+    }
+    for (const expected of [ `https://${NAMES.shop}:${ports.httpsPort}`, `http://${NAMES.router}:${ports.httpPort}`, `https://${NAMES.mail}:${ports.httpsPort}`, `https://${NAMES.other}:${ports.httpsPort}` ]) {
         if (!log.includes(expected)) {
             throw new Error(`the owner's log names no fill on ${expected}`);
         }
@@ -568,7 +860,7 @@ const runChromiumFamily = async function(app, browser, ports, items, spki) {
         // Connect is pressed at once, while the extension's worker may still be starting, as a person might.
         await pair(app, browser.identity, () => page.locator('#connect-button').click());
         await page.locator('#paired').waitFor({ state: 'visible' });
-        await fillActs(app, new ChromiumTab(page), ports, items, browser.name);
+        await fillActs(app, new ChromiumTab(page, browser.id), ports, items, browser.name);
     } catch (error) {
         const shown = page ? await new ChromiumTab(page).state().then((state) => `${page.url()} ${JSON.stringify(state)}`, (reason) => `(${reason.message})`) : '(no page)';
         const status = page?.url().startsWith('chrome-extension://')

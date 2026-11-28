@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import {
+    continuesOn,
     elementsOverlap,
+    fillFor,
+    frameRequest,
     matchesWithNodeName,
     siteMatch
 } from '../src/common/global.js';
@@ -105,3 +108,48 @@ test('Test elementsOverlap()', async ({ page }) => {
     expect(elementsOverlap(inputRect, { left: 210, top: 0, right: 240, bottom: 40 })).toBe(false);
 });
 
+
+test('Test fillFor()', async () => {
+    expect(fillFor(true, false)).toBe('username');
+    expect(fillFor(false, true)).toBe('password');
+    expect(fillFor(true, true)).toBe('both');
+    // A form whose fields keypaste can't see, as the toolbar popup's pick, asks for both as 1.0.0 did
+    expect(fillFor(false, false)).toBe('both');
+});
+
+test('Test frameRequest()', async () => {
+    const all = [ 'fill', 'continued', 'frames', 'totp' ];
+    const tab = 'https://www.icloud.com/';
+    const frame = 'https://idmsa.apple.com/appleauth/auth/authorize/signin?frame_id=1';
+
+    // The tab's own document and a frame of its origin ask with the tab's address
+    expect(frameRequest(tab, tab, 'https://www.icloud.com', all)).toEqual({ url: tab });
+    expect(frameRequest(tab, 'https://www.icloud.com/frame', 'https://www.icloud.com', [])).toEqual({ url: tab });
+    expect(frameRequest(tab, '', '', [])).toEqual({ url: tab });
+
+    // A frame of another origin asks with its own address and the tab's, only when keypaste decides frames
+    expect(frameRequest(tab, frame, 'https://idmsa.apple.com', all)).toEqual({ url: frame, topUrl: tab });
+    expect(frameRequest(tab, frame, '', all)).toEqual({ url: frame, topUrl: tab });
+    expect(frameRequest(tab, frame, 'https://idmsa.apple.com', [ 'fill', 'continued' ])).toBe(null);
+    expect(frameRequest(tab, frame, 'https://idmsa.apple.com', [])).toBe(null);
+
+    // Sandboxed and http frames are never asked about, even of the tab's own address
+    expect(frameRequest(tab, frame, 'null', all)).toBe(null);
+    expect(frameRequest(tab, tab, 'null', all)).toBe(null);
+    expect(frameRequest(tab, 'http://login.example.test/', 'http://login.example.test', all)).toBe(null);
+    expect(frameRequest(tab, 'about:blank', 'null', all)).toBe(null);
+
+    // No tab address, no request
+    expect(frameRequest(undefined, frame, 'https://idmsa.apple.com', all)).toBe(null);
+    expect(frameRequest('about:blank', frame, 'https://idmsa.apple.com', all)).toBe(null);
+});
+
+test('Test continuesOn()', async () => {
+    expect(continuesOn('accounts.google.com', 'google.com')).toBe(true);
+    expect(continuesOn('google.com', 'google.com')).toBe(true);
+    expect(continuesOn('Login.Example.co.uk', 'example.co.uk')).toBe(true);
+    expect(continuesOn('notgoogle.com', 'google.com')).toBe(false);
+    expect(continuesOn('google.com.evil.test', 'google.com')).toBe(false);
+    expect(continuesOn('google.com', '')).toBe(false);
+    expect(continuesOn('', 'google.com')).toBe(false);
+});

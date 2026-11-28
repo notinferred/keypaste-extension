@@ -2,6 +2,9 @@
 
 const MIN_INPUT_FIELD_WIDTH_PX = 8;
 const MIN_INPUT_FIELD_OFFSET_WIDTH = 60;
+// The lengths a field without autocomplete=one-time-code may limit itself to and still be taken for a one-time code.
+const MIN_TOTP_INPUT_LENGTH = 6;
+const MAX_TOTP_INPUT_LENGTH = 10;
 const MIN_OPACITY = 0.7;
 const MAX_OPACITY = 1;
 

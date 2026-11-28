@@ -48,6 +48,16 @@ async function assertSearchField(classStr, properties, testName, expectedResult)
     kpxcAssert(isSearchfield, expectedResult, Tests.SEARCH_FIELDS, testName);
 }
 
+async function assertOneTimeCodeField(classStr, properties, testName, expectedResult) {
+    const input = kpxcUI.createElement('input', classStr, properties);
+    document.body.appendChild(input);
+
+    const isOneTimeCode = kpxcFields.isOneTimeCodeField(input);
+
+    document.body.removeChild(input);
+    kpxcAssert(isOneTimeCode, expectedResult, Tests.TOTP_FIELDS, testName);
+}
+
 async function assertSearchForm(properties, testName, expectedResult) {
     const form = kpxcUI.createElement('form', '', { action: 'search' });
     const input = kpxcUI.createElement('input', '', properties);

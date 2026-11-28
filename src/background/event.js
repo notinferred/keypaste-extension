@@ -35,6 +35,7 @@ kpxcEvent.showStatus = async function(tab, configured, internalPoll, forceShowDe
         encryptionKeyUnrecognized: keepass.isEncryptionKeyUnrecognized,
         error: errorMessage,
         iframeDetected: iframeDetected,
+        features: keepass.features,
         identifier: keyId,
         keypasteAvailable: keepass.isKeypasteAvailable
     };
@@ -158,6 +159,7 @@ kpxcEvent.messageHandlers = {
     'is_iframe_allowed': page.isIframeAllowed,
     'list_logins': page.listLogins,
     'fill_login': page.fillLogin,
+    'continue_login': page.continueLogin,
     'load_settings': page.getSettings,
     'open_keypaste': page.openKeypaste,
     'open_options': () => browser.runtime.openOptionsPage(),

@@ -141,6 +141,7 @@ tabs.onRemoved = async function(tabId, _removeInfo) {
     }
     await tabs.deleteTabEntry(tabId);
     tabs.clearTimeout(tabId);
+    page.continuations.delete(tabId);
 };
 
 /**
@@ -157,6 +158,7 @@ tabs.onUpdated = async function(tabId, changeInfo, tab) {
     // If the tab URL has changed (e.g. logged in) clear credentials
     if (changeInfo.url) {
         page.clearLogins(tabId);
+        page.forgetContinuation(tabId, changeInfo.url);
     }
 
     if (changeInfo.status === 'complete' && tabId) {

@@ -19,6 +19,8 @@ kpxc.combinations = [];
 kpxc.credentials = [];
 kpxc.databaseState = DatabaseState.DISCONNECTED;
 kpxc.detectedFields = 0;
+// What keypaste advertised, as the background last heard it.
+kpxc.features = [];
 kpxc.improvedFieldDetectionEnabledForPage = false;
 kpxc.inputs = [];
 kpxc.settings = {};
@@ -73,6 +75,7 @@ kpxc.detectDatabaseChange = async function(response) {
             const settings = await sendMessage('load_settings');
             kpxc.settings = settings;
             kpxc.databaseState = DatabaseState.UNLOCKED;
+            kpxc.features = (await sendMessage('get_status', [ true ]))?.features ?? [];
 
             await kpxc.initCredentialFields();
             kpxcIcons.switchIcons();
@@ -170,7 +173,7 @@ kpxc.initCombinations = async function(inputs = []) {
     for (const c of combinations) {
         // Don't allow duplicates
         if (!kpxc.combinations.some(f =>
-            f.username === c.username && f.password === c.password && f.form === c.form
+            f.username === c.username && f.password === c.password && f.totp === c.totp && f.form === c.form
         )) {
             kpxc.combinations.push(c);
         }
@@ -305,7 +308,7 @@ kpxc.passwordFilledWithExceptions = async function(currentForm) {
     return await sendMessage('password_get_filled');
 };
 
-// Asks keypaste for the names of this page's logins, which a click on the key icon shows; the frame of another site gets none.
+// Asks keypaste for the names of this page's logins, which a click on the key icon shows; a frame keypaste is not asked about gets none.
 kpxc.listLogins = async function() {
     if (!await isIframeAllowed()) {
         return { state: 'frame', entries: [] };
@@ -336,6 +339,7 @@ kpxc.triggerActivatedTab = async function() {
 kpxc.updateDatabaseState = async function() {
     const res = await sendMessage('get_status', [ true ]);
 
+    kpxc.features = res.features ?? [];
     if (!res.keypasteAvailable) {
         kpxc.databaseState = DatabaseState.DISCONNECTED;
         return;
@@ -371,6 +375,44 @@ kpxc.usePredefinedSites = function() {
             kpxc.improvedFieldDetectionEnabledForPage = true;
         }
     }
+};
+
+// The login field the fill shortcut opens the list on when no field has the focus: the first form's username in the page, or
+// its password when it shows no username, as the key icon is placed.
+kpxc.firstLoginField = function() {
+    const usable = (field) => field && !field.disabled && !field.readOnly && kpxcFields.isVisible(field);
+    const fields = kpxc.combinations
+        .map(c => usable(c.username) ? c.username : usable(c.password) ? c.password : null)
+        .filter(Boolean);
+    fields.sort((a, b) => a === b ? 0 : (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    return fields[0];
+};
+
+// The field the fill shortcut, which reaches every frame of the tab, opens the list in: in the document holding the focus, or
+// the top one when the browser's own window holds it, so one list opens; the focused field, or else the first login field.
+kpxc.shortcutField = function() {
+    const active = document.activeElement;
+    if (active instanceof HTMLIFrameElement || active instanceof HTMLFrameElement) {
+        return undefined;
+    }
+
+    if (!document.hasFocus() && window.self !== window.top) {
+        return undefined;
+    }
+
+    return active instanceof HTMLInputElement ? active : kpxc.firstLoginField();
+};
+
+// The browser's own shortcut, which the page cannot press, opens the list as the key icon does, focusing the field it opens in.
+kpxc.openFromShortcut = async function() {
+    const field = kpxc.shortcutField();
+    if (!field) {
+        return;
+    }
+
+    field.focus();
+    await kpxc.reconnect();
+    await kpxcUserAutocomplete.open(field);
 };
 
 /**
@@ -428,11 +470,7 @@ browser.runtime.onMessage.addListener(async function(req, sender) {
             }
             kpxcFill.fillFromPopup(req.uuid);
         } else if (req.action === 'fill_username_password') {
-            // The browser's own shortcut, which the page cannot press, opens the list as the key icon does.
-            await kpxc.reconnect();
-            if (document.activeElement instanceof HTMLInputElement) {
-                await kpxcUserAutocomplete.open(document.activeElement);
-            }
+            await kpxc.openFromShortcut();
         } else if (req.action === 'frame_message') {
             if (req.args?.[0] === 'notification_from_frame' && window.self === window.top) {
                 // Handle notification from iframe in top window
@@ -459,6 +497,7 @@ kpxc.reconnect = async function() {
     return true;
 };
 
+// Whether this frame may ask keypaste: the background decides from the browser's own word for the tab and the frame.
 const isIframeAllowed = async function() {
     sendMessage('iframe_detected', false);
 
@@ -468,12 +507,12 @@ const isIframeAllowed = async function() {
         return false;
     }
 
-    const allowed = await sendMessage('is_iframe_allowed', [ window.location.href ]);
+    const allowed = await sendMessage('is_iframe_allowed');
     if (allowed) {
         return true;
     }
 
-    logDebug(`Error: Credential request ignored from another domain: ${window.self.location.host}`);
+    logDebug(`Error: Credential request ignored from a frame keypaste does not fill: ${window.self.location.host}`);
     sendMessage('iframe_detected', true);
     return false;
 };

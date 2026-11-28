@@ -154,10 +154,85 @@ const elementsOverlap = function(rect1, rect2) {
     return isElementInside(rect1, rect2) || overlaps(rect1, rect2);
 };
 
+// What keypaste's owner can do beyond 1.0.0, as it advertises in its answer to a pairing or its check; with none, the extension does as 1.0.0 did.
+const Feature = Object.freeze({
+    FILL: 'fill',
+    CONTINUED: 'continued',
+    FRAMES: 'frames',
+    TOTP: 'totp',
+});
+
+// The parts of a login one fill can release.
+const FillPart = Object.freeze({
+    USERNAME: 'username',
+    PASSWORD: 'password',
+    BOTH: 'both',
+    TOTP: 'totp',
+});
+
+// The origin of an address, or '' for one that is not a URL.
+const originOf = function(url) {
+    try {
+        return new URL(url).origin;
+    } catch {
+        return '';
+    }
+};
+
+// What a pick asks keypaste to release: only the fields the page shows, so a username-only page gets no password.
+const fillFor = function(usernameShown, passwordShown) {
+    if (usernameShown && !passwordShown) {
+        return FillPart.USERNAME;
+    }
+
+    return passwordShown && !usernameShown ? FillPart.PASSWORD : FillPart.BOTH;
+};
+
+/**
+ * The addresses a request about a frame's logins carries, both as the browser reports them and never as the page says: the tab's
+ * for a frame of the tab's origin; the frame's own with the tab's as topUrl for an https frame of another origin, when keypaste
+ * decides frames; and null for any other frame, which keypaste is never asked about.
+ * @param {string} tabUrl       The tab's address
+ * @param {string} frameUrl     The asking frame's address, or '' for the tab's own document
+ * @param {string} frameOrigin  The frame's origin as the browser reports it, 'null' for a sandboxed frame, or '' when it gives none
+ * @param {Array} features      What keypaste advertised
+ * @returns {object|null}       { url } or { url, topUrl }, or null
+ */
+const frameRequest = function(tabUrl, frameUrl, frameOrigin, features = []) {
+    const tabOrigin = originOf(tabUrl);
+    if (!tabOrigin || tabOrigin === 'null') {
+        return null;
+    }
+
+    const origin = frameUrl ? originOf(frameUrl) : tabOrigin;
+    if (origin === tabOrigin && frameOrigin !== 'null') {
+        return { url: tabUrl };
+    }
+
+    if (!features.includes(Feature.FRAMES) || frameOrigin === 'null' || !origin.startsWith('https://')) {
+        return null;
+    }
+
+    return { url: frameUrl, topUrl: tabUrl };
+};
+
+// Whether a page of this host may continue a fill keypaste bound to a registrable domain.
+const continuesOn = function(host, site) {
+    if (!host || !site) {
+        return false;
+    }
+
+    const lowered = host.toLowerCase();
+    return lowered === site || lowered.endsWith(`.${site}`);
+};
+
 // Exports for tests
 if (typeof module === 'object') {
     module.exports = {
+        continuesOn,
         elementsOverlap,
+        fillFor,
+        frameRequest,
         matchesWithNodeName,
         siteMatch,
         tileHue,

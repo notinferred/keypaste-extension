@@ -115,7 +115,12 @@ const iconClicked = async function(field, icon) {
     }
 
     // The person's click is the only thing that asks keypaste for this page's logins; the list says if keypaste is locked.
+    // A click that continues the tab's last fill, such as the password page after the username's, fills with no list.
     await kpxc.reconnect();
+    if (await kpxcFill.fillContinued(field)) {
+        return;
+    }
+
     await kpxcUserAutocomplete.open(field);
 };
 

@@ -20,6 +20,14 @@ test.describe('Content script tests', () => {
     test('Search field tests', async () => {
         await verifyResults('search-field-results');
     });
+
+    test('One-time code field tests', async () => {
+        await verifyResults('totp-field-results');
+    });
+
+    test('Fill shortcut tests', async () => {
+        await verifyResults('fill-shortcut-results');
+    });
 });
 
 const verifyResults = async(selector) => {

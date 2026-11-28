@@ -12,8 +12,8 @@
         "description": "If a credential is expired, this is appended to the title label."
     },
     "credentialsBlockedInIframe": {
-        "message": "keypaste doesn't fill a frame from another site.",
-        "description": "Alert message when filling credentials is blocked due to iframe restrictions."
+        "message": "keypaste doesn't fill this frame.",
+        "description": "The page's list in a frame keypaste is never asked about: a sandboxed or http frame, or one from another site while keypaste can't decide frames."
     },
     "credentialsNoUsername": {
         "message": "No username",
@@ -95,6 +95,14 @@
     "lockDatabase": {
         "message": "Lock vault",
         "description": "Lock database button title text."
+    },
+    "loginListCodeNotFilled": {
+        "message": "No code filled. The login has none, or keypaste refused.",
+        "description": "A pick or a continued click in a one-time code field that keypaste did not fill."
+    },
+    "loginListFrameRefused": {
+        "message": "Not filled. Sign-in from this frame isn't trusted in keypaste.",
+        "description": "The page's list in a frame from another site that keypaste refused, as when the person didn't trust it."
     },
     "loginListKeypasteLocked": {
         "message": "keypaste is locked",
@@ -210,8 +218,8 @@
         "description": "What to do when the extension can't reach keypaste."
     },
     "popupIframeDetected": {
-        "message": "keypaste doesn't fill the frame from another site on this page.",
-        "description": "Shown when the page has a frame from another site."
+        "message": "keypaste didn't fill a frame on this page.",
+        "description": "Shown when keypaste wasn't asked about a frame on the page, or refused it."
     },
     "popupNeedReconfigure": {
         "message": "keypaste no longer knows this browser."

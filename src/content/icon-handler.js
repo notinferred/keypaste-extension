@@ -33,6 +33,14 @@ kpxcIcons.addIcon = async function(field, iconType) {
 // Adds all icons from a form struct
 kpxcIcons.addIconsFromForm = async function(form) {
     const addUsernameIcons = async function(c) {
+        // A one-time code field, which keypaste fills with the item's current code, also once a password was filled
+        if (c.totp && !c.username && !c.password) {
+            if (kpxc.settings.showLoginFormIcon) {
+                kpxcIcons.addIcon(c.totp, kpxcIcons.iconTypes.DEFAULT);
+            }
+            return;
+        }
+
         if (kpxc.settings.showLoginFormIcon && await kpxc.passwordFilledWithExceptions(c) === false) {
             // Special case where everything else has been hidden, but a single password field is now displayed.
             // For example PayPal and Amazon is handled like this.
@@ -46,7 +54,7 @@ kpxcIcons.addIconsFromForm = async function(form) {
                 }
             }
             const usernameFieldVisible = c.username && kpxcFields.isVisible(c.username);
-            
+
             if (c.username && !c.username.readOnly && usernameFieldVisible) {
                 kpxcIcons.addIcon(c.username, kpxcIcons.iconTypes.DEFAULT);
             } else if (c.password && (!c.username || (c.username && (c.username.readOnly || !usernameFieldVisible)))) {
